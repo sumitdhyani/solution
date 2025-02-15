@@ -1,0 +1,45 @@
+if(NOT CMAKE_BUILD_TYPE )
+        set(CMAKE_BUILD_TYPE Release)
+endif()
+
+if(WIN32 AND NOT CMAKE_GENERATOR_PLATFORM)
+        set(CMAKE_GENERATOR_PLATFORM x64)
+endif()
+
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+        set(GTEST_LIB_SUFFIX d)
+else()
+        set(GTEST_LIB_SUFFIX "")
+endif()
+
+if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
+	set(CMAKE_CXX_STANDARD 23)
+	cmake_minimum_required(VERSION 2.8.9)
+	if(WIN32)
+		set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
+		set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
+		set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
+	else()
+		set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
+		set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
+		set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
+		set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+	endif()
+endif()
+
+if(WIN32)
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+    set(GTEST_LIBS "gtest${GTEST_LIB_SUFFIX}"
+    "gtest_main${GTEST_LIB_SUFFIX}")
+else()
+	set(GTEST_LIBS "gtest${GTEST_LIB_SUFFIX}"
+	"gtest_main${GTEST_LIB_SUFFIX}"
+	pthread)
+endif()
+
+#add_subdirectory("UnitTests")
+
+project(Solution)
+
+add_executable(Solution Solution.cpp)
