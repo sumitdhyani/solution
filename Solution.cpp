@@ -255,7 +255,6 @@ class MDEntrry
     }
     else
     {
-      comp = 0;
       uint8_t i = 0;
       while (0 == comp &&
             m_raw[i] != ',' &&
