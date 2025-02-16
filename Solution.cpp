@@ -18,18 +18,19 @@ typedef std::function<void(const std::string& file1,
                            const std::string& outFile,
                            const FileReaderProvider&,
                            const FileWriterProvider&,
-                           const std::string&)> FileMerger;
+                           const std::string&,
+                           const uint64_t maxAllowedHeapMemory)> FileMerger;
 
 class MDEntrry
 {
-  struct MDTimeSTamp
+  struct MDTimeStamp
   {
     
     public:
     // "raw" should be in the format:
     // Symbol, Timestamp, Price, Size, Exchange, Type
 
-    MDTimeSTamp(const char* timestamp)
+    MDTimeStamp(const char* timestamp)
     {
       m_yyyy = timestamp;
       m_mm   = m_yyyy + 5;
@@ -201,7 +202,7 @@ class MDEntrry
       return comp;
     }
 
-    int operator <=>(const MDTimeSTamp& other)
+    int operator <=>(const MDTimeStamp& other)
     {
       if (int comp = compareYear(m_yyyy, other.m_yyyy); comp != 0)
       {
@@ -243,9 +244,19 @@ class MDEntrry
     const char* m_ms;
   };
 
-  MDEntrry(std::string&& raw) : m_timestamp(raw.c_str() + raw.find_first_of(",") + 1), m_raw(raw)
+  static const char* findTimeStampStart(const char* raw)
   {
+    uint8_t i = 0;
+    while (raw[i] != ',')
+    {
+      ++i;
+    }
+
+    return raw+i+2;
   }
+
+  MDEntrry(const char* raw) : m_raw(raw), m_timestamp(findTimeStampStart(raw))
+  {}
 
   int operator<=>(const MDEntrry& other)
   {
@@ -289,15 +300,15 @@ class MDEntrry
   }
 
   private:
-  MDTimeSTamp m_timestamp;
-  std::string m_raw;
+  MDTimeStamp m_timestamp;
+  const char* m_raw;
 };
 
 int main(int argc, char** argv)
 {
   if (argc < 3)
   {
-    std::cout << "INvalid no. of args" << std::endl;
+    std::cout << "Invalid no. of args" << std::endl;
     return 1;
   }
 
@@ -331,7 +342,7 @@ int main(int argc, char** argv)
     (const std::string& buff)
     {
       static bool headerWritten = false;
-      if (!headerWritten)
+      if (!headerWritten) 
       {
         (*fileHandle) << "Timestamp, Price, Size, Exchange, Type" << std::endl;
         headerWritten = true;
