@@ -595,8 +595,6 @@ int main(int argc, char** argv)
       return fileNames.size();
     };
 
-
-
     while(fetchNumRemainingFiles() >= 2)
     {
       fm(mergeFileFetcher, frp, fwp, onOutFileCreated, 2*1024*1024 );
@@ -610,7 +608,6 @@ int main(int argc, char** argv)
   }
 
   mergeAllFiles(remainingFiles);
-  std::cout << remainingFiles.front(); 
   std::rename(remainingFiles.front().c_str(), "MultiplexedFile.txt");
   return 0;
 }
