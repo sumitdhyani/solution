@@ -460,7 +460,13 @@ FileLineReader getFileLineReader(const std::string& filename)
   (char *buff)
   {
     uint8_t ret = 0;
-    if(fileHandle->getline(buff, 256); buff[0] != '\0')
+    if (nullptr == buff)
+    {
+      fileHandle->close();
+    }
+
+    else if(fileHandle->is_open() &&
+            fileHandle->getline(buff, 256); buff[0] != '\0')
     {
       if (memcmp(buff, "Symbol", strlen("Symbol")) == 0 ||
           memcmp(buff, "Timestamp", strlen("Timestamp")) == 0)
@@ -498,6 +504,11 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
                 const MergeNotificationHandler outFileNotifier,
                 const uint64_t maxHeapSize)
 {
+  // Allocate in big chunks instead of allocaing 
+  // small chunks several times to avoid repeated system calls and hence
+  // improve performance
+  // 
+  // "buff" is the buffer that holds the intermidate result of the merge
   char* buff = reinterpret_cast<char*>(malloc(maxHeapSize));
   char* curr = buff;
   uint64_t bytesRemaining  = maxHeapSize;
@@ -634,6 +645,12 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
   }
 
   free(buff);
+
+  // Close the file handles
+  fileReader1(nullptr);
+  fileReader2(nullptr);
+
+  // Notify the merge just happenned
   outFileNotifier(fn1, fn2, outFile);
   return true;
 }
