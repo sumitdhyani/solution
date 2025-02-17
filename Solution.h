@@ -88,7 +88,7 @@ typedef std::function<bool(const std::function<std::optional<MergeFilePair>()> m
  * One can easily pass mock IO interfaces to this method for the purpose of Unit Testing
  *
  * @param  numThreads               Max no. of threads used to merge the files
- * @param  maxHeapSize              Max memory to allocated to hold intermediate results
+ * @param  maxHeapSize              Max memory in GB to allocated to hold intermediate results
  * @param  filesToMerge             A input queue containing the files to be merged
  * @param  fileMerger               A FileMerger(explained above)
  * @param  fileReaderProvider       A FileReaderProvider(explained above)
@@ -101,3 +101,16 @@ void entryPoint(uint8_t numThreads,
                 FileMerger fileMerger,
                 FileReaderProvider fileReaderProvider,
                 FileWriterProvider fileWriterProvider);
+
+// Used in production implementation, defined in Solution.cpp details mentioned above implementation 
+FileLineReader getFileLineReader(const std::string& filename);
+
+// Used in production implementation, defined in Solution.cpp details mentioned above implementation 
+FileWriter getFileWriter(const std::string& filename);
+
+// Used in production implementation, defined in Solution.cpp details mentioned above implementation 
+bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetcher, 
+                const FileReaderProvider fileReaderProvider,
+                const FileWriterProvider fileWriterProvider,
+                const MergeNotificationHandler outFileNotifier,
+                const uint64_t maxHeapSize);
