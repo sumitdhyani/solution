@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <filesystem>
+#include <mutex>
+#include <thread>
 
 typedef std::function<uint8_t(char* buff)> FileLineReader;
 typedef std::function<void(const char*, const uint32_t)> FileWriter;
@@ -548,14 +550,16 @@ int main(int argc, char** argv)
   };
 
   std::function<void(std::queue<std::string>&)> mergeAllFiles = [fm, frp, fwp](std::queue<std::string>& fileNames) {
+    std::mutex mutex;
     const std::function<
     std::optional<std::tuple<std::string, std::string>>()
     > mergeFileFetcher =
-    [&fileNames]()
+    [&fileNames, mutex = std::ref(mutex)]()
     {
       std::optional<std::tuple<std::string,std::string>> res;
       if(fileNames.size() >= 2)
       {
+        std::unique_lock<std::mutex> lock(mutex);
         std::string f1 = fileNames.front();
         fileNames.pop();
         std::string f2 = fileNames.front();
@@ -572,7 +576,7 @@ int main(int argc, char** argv)
     };
 
     std::function<void(const std::string&, const std::string, const std::string&)> onOutFileCreated =
-    [&fileNames](const std::string& f1, const std::string& f2, const std::string& outFile)
+    [&fileNames, mutex = std::ref(mutex)](const std::string& f1, const std::string& f2, const std::string& outFile)
     {
       //csv files are intermediate files
       if(f1.substr(f1.find_first_of(".")).compare(".csv") == 0)
@@ -586,6 +590,7 @@ int main(int argc, char** argv)
         std::remove(f2.c_str());
       }
 
+      std::unique_lock<std::mutex> lock(mutex);
       fileNames.push(outFile);
     };
 
@@ -607,7 +612,24 @@ int main(int argc, char** argv)
     remainingFiles.push(argv[i]);
   }
 
-  mergeAllFiles(remainingFiles);
+  uint8_t numThreads  = 8;
+  std::thread* threads[8];
+
+  for (uint8_t i = 0; i < numThreads; i++)
+  {
+    threads[i] = new std::thread([mergeAllFiles, remainingFiles = std::ref(remainingFiles)](){mergeAllFiles(remainingFiles);});
+  }
+
+  for (uint8_t i = 0; i < numThreads; i++)
+  {
+    threads[i]->join();
+  }
+
+  for (uint8_t i = 0; i < numThreads; i++)
+  {
+    delete threads[i];
+  }
+
   std::rename(remainingFiles.front().c_str(), "MultiplexedFile.txt");
   return 0;
 }
