@@ -78,7 +78,7 @@ class MDEntrry
 
     int compareYear(const char* y1, const char* y2) const
     {
-      uint8_t comp = 0;
+      int comp = 0;
       uint8_t i = 0;
       while (i < 4 && !comp)
       {
@@ -101,7 +101,7 @@ class MDEntrry
 
     int compareMonth(const char* m1, const char* m2) const
     {
-      uint8_t comp = 0;
+      int comp = 0;
       uint8_t i = 0;
       while (i < 2 && !comp)
       {
@@ -124,7 +124,7 @@ class MDEntrry
 
     int compareday(const char* d1, const char* d2) const
     {
-      uint8_t comp = 0;
+      int comp = 0;
       uint8_t i = 0;
       while (i < 2 && !comp)
       {
@@ -147,7 +147,7 @@ class MDEntrry
 
     int compareHour(const char* h1, const char* h2) const
     {
-      uint8_t comp = 0;
+      int comp = 0;
       uint8_t i = 0;
       while (i < 2 && !comp)
       {
@@ -170,7 +170,7 @@ class MDEntrry
 
     int compareMinute(const char* min1, const char* min2) const
     {
-      uint8_t comp = 0;
+      int comp = 0;
       uint8_t i = 0;
       while (i < 2 && !comp)
       {
@@ -193,7 +193,7 @@ class MDEntrry
 
     int compareSec(const char* s1, const char* s2) const
     {
-      uint8_t comp = 0;
+      int comp = 0;
       uint8_t i = 0;
       while (i < 2 && !comp)
       {
@@ -216,7 +216,7 @@ class MDEntrry
 
     int compareMs(const char* ms1, const char* ms2) const
     {
-      uint8_t comp = 0;
+      int comp = 0;
       uint8_t i = 0;
       while (i < 3 && !comp)
       {
@@ -265,7 +265,7 @@ class MDEntrry
       }
       else
       {
-        return compareSec(m_ms, other.m_ms);
+        return compareMs(m_ms, other.m_ms);
       }
       
     }
@@ -360,7 +360,8 @@ int main(int argc, char** argv)
       uint8_t ret = 0;
       if(fileHandle->getline(buff, 256); buff[0] != '\0')
       {
-        if (buff[0] < '0' || buff[0] > '9')
+        if (memcmp(buff, "Symbol", strlen("Symbol")) == 0 ||
+            memcmp(buff, "Timestamp", strlen("Timestamp")) == 0)
         {
           fileHandle->getline(buff, 256);
         }
@@ -380,14 +381,14 @@ int main(int argc, char** argv)
   [](const std::string& filename)
   {
     auto fileHandle = std::make_shared<std::ofstream>(filename, std::ofstream::out);
-    FileWriter flw =
+    FileWriter fw =
     [fileHandle]
     (const char* buff, const uint32_t len)
     {
       fileHandle->write(buff, len);
     };
 
-    return flw;
+    return fw;
   };
 
 
