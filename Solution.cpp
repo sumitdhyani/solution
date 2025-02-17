@@ -541,6 +541,7 @@ int main(int argc, char** argv)
     }
 
     free(buff);
+    outFileNotifier(outFile);
     return true;
 
   };
