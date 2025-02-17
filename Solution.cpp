@@ -11,6 +11,7 @@
 #include <optional>
 #include <stdlib.h>
 #include <string.h>
+#include <filesystem>
 
 typedef std::function<uint8_t(char* buff)> FileLineReader;
 typedef std::function<void(const char*, const uint32_t)> FileWriter;
@@ -598,5 +599,7 @@ int main(int argc, char** argv)
   }
 
   mergeAllFiles(remainingFiles);
+  std::cout << remainingFiles.front(); 
+  std::rename(remainingFiles.front().c_str(), "MultiplexedFile.txt");
   return 0;
 }
