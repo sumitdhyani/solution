@@ -21,7 +21,7 @@ typedef std::function<FileWriter(const std::string&)> FileWriterProvider;
 typedef std::function<bool(const std::function<std::optional<std::tuple<std::string,std::string>>()>, 
                            const FileReaderProvider&,
                            const FileWriterProvider&,
-                           const std::function<void(const std::string&)>,
+                           const std::function<void(const std::string&, const std::string&, const std::string&)>,
                            const uint64_t)> FileMerger;
 
 uint32_t readNextLine(const FileLineReader& reader,
@@ -400,7 +400,7 @@ int main(int argc, char** argv)
   (const std::function<std::optional<std::tuple<std::string,std::string>>()>& filenameFetcher, 
    const FileReaderProvider& fileReaderProvider,
    const FileWriterProvider& fileWriterProvider,
-   const std::function<void(const std::string&)>& outFileNotifier,
+   const std::function<void(const std::string&, const std::string&, const std::string&)>& outFileNotifier,
    const uint64_t maxHeapSize)
   {
     char* buff = reinterpret_cast<char*>(malloc(maxHeapSize));
@@ -543,9 +543,8 @@ int main(int argc, char** argv)
     }
 
     free(buff);
-    outFileNotifier(outFile);
+    outFileNotifier(fn1, fn2, outFile);
     return true;
-
   };
 
   std::function<void(std::queue<std::string>&)> mergeAllFiles = [fm, frp, fwp](std::queue<std::string>& fileNames) {
@@ -572,9 +571,21 @@ int main(int argc, char** argv)
       return res;
     };
 
-    std::function<void(const std::string&)> onOutFileCreated =
-    [&fileNames](const std::string& outFile)
+    std::function<void(const std::string&, const std::string, const std::string&)> onOutFileCreated =
+    [&fileNames](const std::string& f1, const std::string& f2, const std::string& outFile)
     {
+      //csv files are intermediate files
+      if(f1.substr(f1.find_first_of(".")).compare(".csv") == 0)
+      {
+        std::remove(f1.c_str());
+      }
+
+      //csv files are intermediate files
+      if(f2.substr(f2.find_first_of(".")).compare(".csv") == 0)
+      {
+        std::remove(f2.c_str());
+      }
+
       fileNames.push(outFile);
     };
 
