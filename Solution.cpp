@@ -1,4 +1,3 @@
-#include <functional>
 #include <memory>
 #include <fstream>
 #include <stdio.h>
@@ -6,26 +5,34 @@
 #include <stdint.h>
 #include <iostream>
 #include <tuple>
-#include <string>
 #include <queue>
-#include <optional>
 #include <stdlib.h>
 #include <string.h>
 #include <filesystem>
-#include <mutex>
-#include <thread>
+#include "Solution.h"
 
-typedef std::function<uint8_t(char* buff)> FileLineReader;
-typedef std::function<void(const char*, const uint32_t)> FileWriter;
-typedef std::function<FileLineReader(const std::string&)> FileReaderProvider;
-typedef std::function<FileWriter(const std::string&)> FileWriterProvider;
+// Algorithm overview:
+// Since the files are already sorted, the algorithm is to merge pairs of files
+// using the "merge" step used in the merge sort, i.e., select the "lesser" of the 
+// curr lines in the 2 files and then push it into the outfile. So, in every thread:
+// 1. If the input file queue has only 1 file, then stop, this file is theresult file
+// 2. Pop 2 files from input file queue
+// 3. Merge the files, put the merge result in an outfile 
+// 4. push this intermediate outfile agin in the input queue
+// 5. Repeat steps 1- 4
+// 
+// One thing to note is that the input file queue is accessed in multiple threads
+// So pusing into and popping from this file is to be done within a critical section 
 
-typedef std::function<bool(const std::function<std::optional<std::tuple<std::string,std::string>>()>, 
-                           const FileReaderProvider&,
-                           const FileWriterProvider&,
-                           const std::function<void(const std::string&, const std::string&, const std::string&)>,
-                           const uint64_t)> FileMerger;
 
+// The intermediate files are kept in the format:
+// Symbol, Timestamp, Price, Size, Exchange, Type
+// But the original given input files are in the format:
+// Timestamp, Price, Size, Exchange, Type
+// To cater this difference, we need this wrapper
+// "symbol" for intermediate files is passed as ""
+// but for original input files, it's passed as the name
+// of the symbol the input file is made for
 uint32_t readNextLine(const FileLineReader& reader,
                       char* buff,
                       const std::string& symbol)
@@ -44,6 +51,7 @@ uint32_t readNextLine(const FileLineReader& reader,
   return bytesReadFromFile? bytesReadFromFile + offSet : 0;
 }
 
+// Get the filename for intermediate files
 std::string generateRandomString(const int len) {
   static const char alphanum[] =
       "0123456789"
@@ -344,24 +352,37 @@ class MDEntrry
   const char* m_raw;
 };
 
-void mergeAllFiles(std::shared_ptr<std::queue<std::string>> fileNames,
+/**
+ * This function is the entry point for all the worke2 threads
+ * This is the core logic for merging  2 files
+ * It will pop files from 
+ *
+ * @param  inputFiles               A queue containing the names of files to be merged
+ * @param  mutex                    A for synschronized access tot "inpuFiles"
+ * @param  FileReaderProvider       A "FileReaderProvider"(explained in Solution.h)
+ * @param  FileWriterProvider       A "FileWriterProvider"(explained in Solution.h)
+ * @param  maxHeapSize              Max memory the thread in which it runs can allocate
+ *                                  to hold intermediate resuts, before they ae written to an outfile
+*/
+void mergeAllFiles(std::shared_ptr<std::queue<std::string>> inputFiles,
                    std::shared_ptr<std::mutex> mutex,
-                   FileMerger fm,
-                   FileReaderProvider frp,
-                   FileWriterProvider fwp)
+                   FileMerger fileMerger,
+                   FileReaderProvider fileReaderProvider,
+                   FileWriterProvider fileWriterProvider,
+                   const uint64_t maxHeapSize)
 {
-  const std::function<
-  std::optional<std::tuple<std::string, std::string>>()> mergeFileFetcher =
-  [fileNames, mutex]()
+  const std::function<std::optional<std::tuple<std::string, std::string>>()> mergeFileFetcher =
+  [inputFiles, mutex]()
   {
-    std::optional<std::tuple<std::string,std::string>> res = std::nullopt;
-    if(fileNames->size() >= 2)
+    std::optional<MergeFilePair> res = std::nullopt;
+    if(inputFiles->size() >= 2)
     {
+    // Read-write the input-file queue in a critical section
       std::unique_lock<std::mutex> lock(*mutex);
-      std::string f1 = fileNames->front();
-      fileNames->pop();
-      std::string f2 = fileNames->front();
-      fileNames->pop();
+      std::string f1 = inputFiles->front();
+      inputFiles->pop();
+      std::string f2 = inputFiles->front();
+      inputFiles->pop();
 
       res = std::make_tuple(f1, f2);
     }
@@ -369,39 +390,42 @@ void mergeAllFiles(std::shared_ptr<std::queue<std::string>> fileNames,
     return res;
   };
 
-  std::function<void(const std::string&, const std::string, const std::string&)> onOutFileCreated =
-  [fileNames, mutex](const std::string& f1, const std::string& f2, const std::string& outFile)
+  MergeNotificationHandler mergeNotificationHandler =
+  [inputFiles, mutex](const std::string& f1, const std::string& f2, const std::string& outFile)
   {
-    //csv files are intermediate files
+    //.csv files are intermediate files, delete them after merge
     if(f1.substr(f1.find_first_of(".")).compare(".csv") == 0)
     {
       std::remove(f1.c_str());
     }
 
-    //csv files are intermediate files
+    //.csv files are intermediate files, delete them after merge
     if(f2.substr(f2.find_first_of(".")).compare(".csv") == 0)
     {
       std::remove(f2.c_str());
     }
 
+    // Read-write the input-file queue in a critical section
     std::unique_lock<std::mutex> lock(*mutex);
-    fileNames->push(outFile);
+    inputFiles->push(outFile);
   };
 
   std::function<uint32_t()> fetchNumRemainingFiles =
-  [fileNames, mutex]()
+  [inputFiles, mutex]()
   {
+    // Read-write the input queue in a critical section
     std::unique_lock<std::mutex> lock(*mutex);
-    return fileNames->size();
+    return inputFiles->size();
   };
 
   while(fetchNumRemainingFiles() >= 2)
   {
-    fm(mergeFileFetcher, frp, fwp, onOutFileCreated, 2*1024*1024 );
+    fileMerger(mergeFileFetcher, fileReaderProvider, fileWriterProvider, mergeNotificationHandler, maxHeapSize);
   }
 }
 
 void entryPoint(uint8_t numThreads,
+    uint64_t maxHeapSize,
     std::shared_ptr<std::queue<std::string>> remainingFiles,
     std::shared_ptr<std::mutex> mutex,
     FileMerger fm,
@@ -412,7 +436,7 @@ void entryPoint(uint8_t numThreads,
 
   for (uint8_t i = 0; i < numThreads; i++)
   {
-    threads[i] = new std::thread([remainingFiles, mutex, fm, frp, fwp](){ mergeAllFiles(remainingFiles, mutex, fm, frp, fwp);});
+    threads[i] = new std::thread([remainingFiles, mutex, fm, frp, fwp, maxHeapSize, numThreads](){ mergeAllFiles(remainingFiles, mutex, fm, frp, fwp, maxHeapSize/numThreads);});
   }
 
   for (uint8_t i = 0; i < numThreads; i++)
@@ -427,11 +451,12 @@ void entryPoint(uint8_t numThreads,
 
   std::rename(remainingFiles->front().c_str(), "MultiplexedFile.txt");
 }
+
 int main(int argc, char** argv)
 {
-  if (argc < 3)
+  if (argc < 5)
   {
-    std::cout << "Invalid no. of args" << std::endl;
+    std::cout << "Invalid no. of args\nGive the command in the format \"<path to executable> <numThreads> <max open files> <maxAllowed memory to use> <space separated list of files>\"" << std::endl;
     return 1;
   }
 
@@ -479,10 +504,10 @@ int main(int argc, char** argv)
 
   FileMerger fm =
   []
-  (const std::function<std::optional<std::tuple<std::string,std::string>>()>& filenameFetcher, 
-   const FileReaderProvider& fileReaderProvider,
-   const FileWriterProvider& fileWriterProvider,
-   const std::function<void(const std::string&, const std::string&, const std::string&)>& outFileNotifier,
+  (const std::function<std::optional<MergeFilePair>()> filenameFetcher, 
+   const FileReaderProvider fileReaderProvider,
+   const FileWriterProvider fileWriterProvider,
+   const MergeNotificationHandler outFileNotifier,
    const uint64_t maxHeapSize)
   {
     char* buff = reinterpret_cast<char*>(malloc(maxHeapSize));
@@ -505,23 +530,15 @@ int main(int argc, char** argv)
 
     
     if (std::size_t pos = fn1.find_first_of("."); 
-        0 == strcmp(".csv", fn1.c_str() + pos)
+        strcmp(".csv", fn1.c_str() + pos) != 0
        )
-    {
-      f1IsIntermediateFile = true;
-    }
-    else
     {
       symbol1 = std::move(fn1.substr(0, pos));
     }
 
     if (std::size_t pos = fn2.find_first_of("."); 
-        0 == strcmp(".csv", fn2.c_str() + pos)
+        strcmp(".csv", fn2.c_str() + pos) != 0
        )
-    {
-      f1IsIntermediateFile = true;
-    }
-    else
     {
       symbol2 = std::move(fn2.substr(0, pos));
     }
@@ -533,6 +550,7 @@ int main(int argc, char** argv)
     char l1[256];
     char l2[256];
 
+    // Bytes in the curr line in each file
     uint32_t nl1 = readNextLine(fileReader1, l1, symbol1);
     uint32_t nl2 = readNextLine(fileReader2, l2, symbol2);
     std::string outFile = generateRandomString(20) + ".csv";
@@ -540,6 +558,9 @@ int main(int argc, char** argv)
 
     const char* str = "Symbol, Timestamp, Price, Size, Exchange, Type\n";
     fileWriter(str, strlen(str));
+
+    // Just like the "merge" step of merge sort, keep picking the
+    // "lesser" fron element until EOF is obtained in one of the files
     while (nl1 && nl2)
     {
       MDEntrry md1(reinterpret_cast<const char*>(l1));
@@ -629,14 +650,26 @@ int main(int argc, char** argv)
     return true;
   };
 
-  auto mutex = std::make_shared<std::mutex>();
-  auto remainingFiles = std::make_shared<std::queue<std::string>>();
-  for (uint32_t i = 1; i < argc; i++)
+  uint32_t numThreads = std::min((decltype(std::thread::hardware_concurrency()))atoi(argv[1]), std::thread::hardware_concurrency());
+  uint32_t maxOpenFiles = atoll(argv[2]);
+  
+  if(maxOpenFiles < numThreads*2)
   {
-    remainingFiles->push(argv[i]);
+    numThreads = maxOpenFiles/2;
   }
 
-  entryPoint(8, remainingFiles, mutex, fm, frp, fwp);
+  uint64_t maxAllowedMemory = atoll(argv[3]) * 1024 * 1024 * 1024;
+
+  uint32_t numCores = std::thread::hardware_concurrency();
+
+  auto mutex = std::make_shared<std::mutex>();
+  auto inputFiles = std::make_shared<std::queue<std::string>>();
+  for (uint32_t i = 4; i < argc; i++)
+  {
+    inputFiles->push(argv[i]);
+  }
+
+  entryPoint(numThreads, maxAllowedMemory, inputFiles, mutex, fm, frp, fwp);
   
   return 0;
 }
