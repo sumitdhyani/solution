@@ -344,6 +344,63 @@ class MDEntrry
   const char* m_raw;
 };
 
+void mergeAllFiles(std::shared_ptr<std::queue<std::string>> fileNames,
+                   std::shared_ptr<std::mutex> mutex,
+                   FileMerger fm,
+                   FileReaderProvider frp,
+                   FileWriterProvider fwp)
+{
+  const std::function<
+  std::optional<std::tuple<std::string, std::string>>()> mergeFileFetcher =
+  [fileNames, mutex]()
+  {
+    std::optional<std::tuple<std::string,std::string>> res = std::nullopt;
+    if(fileNames->size() >= 2)
+    {
+      std::unique_lock<std::mutex> lock(*mutex);
+      std::string f1 = fileNames->front();
+      fileNames->pop();
+      std::string f2 = fileNames->front();
+      fileNames->pop();
+
+      res = std::make_tuple(f1, f2);
+    }
+
+    return res;
+  };
+
+  std::function<void(const std::string&, const std::string, const std::string&)> onOutFileCreated =
+  [fileNames, mutex](const std::string& f1, const std::string& f2, const std::string& outFile)
+  {
+    //csv files are intermediate files
+    if(f1.substr(f1.find_first_of(".")).compare(".csv") == 0)
+    {
+      std::remove(f1.c_str());
+    }
+
+    //csv files are intermediate files
+    if(f2.substr(f2.find_first_of(".")).compare(".csv") == 0)
+    {
+      std::remove(f2.c_str());
+    }
+
+    std::unique_lock<std::mutex> lock(*mutex);
+    fileNames->push(outFile);
+  };
+
+  std::function<uint32_t()> fetchNumRemainingFiles =
+  [fileNames, mutex]()
+  {
+    std::unique_lock<std::mutex> lock(*mutex);
+    return fileNames->size();
+  };
+
+  while(fetchNumRemainingFiles() >= 2)
+  {
+    fm(mergeFileFetcher, frp, fwp, onOutFileCreated, 2*1024*1024 );
+  }
+}
+
 int main(int argc, char** argv)
 {
   if (argc < 3)
@@ -549,67 +606,11 @@ int main(int argc, char** argv)
     return true;
   };
 
-  std::function<void(std::queue<std::string>&)> mergeAllFiles = [fm, frp, fwp](std::queue<std::string>& fileNames) {
-    std::mutex mutex;
-    const std::function<
-    std::optional<std::tuple<std::string, std::string>>()
-    > mergeFileFetcher =
-    [&fileNames, mutex = std::ref(mutex)]()
-    {
-      std::optional<std::tuple<std::string,std::string>> res;
-      if(fileNames.size() >= 2)
-      {
-        std::unique_lock<std::mutex> lock(mutex);
-        std::string f1 = fileNames.front();
-        fileNames.pop();
-        std::string f2 = fileNames.front();
-        fileNames.pop();
-
-        res = std::make_tuple(f1, f2);
-      }
-      else
-      {
-        res = std::nullopt;
-      }
-
-      return res;
-    };
-
-    std::function<void(const std::string&, const std::string, const std::string&)> onOutFileCreated =
-    [&fileNames, mutex = std::ref(mutex)](const std::string& f1, const std::string& f2, const std::string& outFile)
-    {
-      //csv files are intermediate files
-      if(f1.substr(f1.find_first_of(".")).compare(".csv") == 0)
-      {
-        std::remove(f1.c_str());
-      }
-
-      //csv files are intermediate files
-      if(f2.substr(f2.find_first_of(".")).compare(".csv") == 0)
-      {
-        std::remove(f2.c_str());
-      }
-
-      std::unique_lock<std::mutex> lock(mutex);
-      fileNames.push(outFile);
-    };
-
-    std::function<uint32_t()> fetchNumRemainingFiles =
-    [&fileNames]()
-    {
-      return fileNames.size();
-    };
-
-    while(fetchNumRemainingFiles() >= 2)
-    {
-      fm(mergeFileFetcher, frp, fwp, onOutFileCreated, 2*1024*1024 );
-    }
-  };
-
-  std::queue<std::string> remainingFiles;
+  auto mutex = std::make_shared<std::mutex>();
+  auto remainingFiles = std::make_shared<std::queue<std::string>>();
   for (uint32_t i = 1; i < argc; i++)
   {
-    remainingFiles.push(argv[i]);
+    remainingFiles->push(argv[i]);
   }
 
   uint8_t numThreads  = 8;
@@ -617,7 +618,7 @@ int main(int argc, char** argv)
 
   for (uint8_t i = 0; i < numThreads; i++)
   {
-    threads[i] = new std::thread([mergeAllFiles, remainingFiles = std::ref(remainingFiles)](){mergeAllFiles(remainingFiles);});
+    threads[i] = new std::thread([remainingFiles, mutex, fm, frp, fwp](){mergeAllFiles(remainingFiles, mutex, fm, frp, fwp);});
   }
 
   for (uint8_t i = 0; i < numThreads; i++)
@@ -630,6 +631,6 @@ int main(int argc, char** argv)
     delete threads[i];
   }
 
-  std::rename(remainingFiles.front().c_str(), "MultiplexedFile.txt");
+  std::rename(remainingFiles->front().c_str(), "MultiplexedFile.txt");
   return 0;
 }
