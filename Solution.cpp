@@ -7,19 +7,24 @@
 #include <iostream>
 #include <tuple>
 #include <string>
+#include <queue>
+#include <optional>
+#include <stdlib.h>
+#include <string.h>
 
-typedef std::function<bool(std::string&)> FileLineReader;
-typedef std::function<void(const std::string&)> FileLineWriter;
+typedef std::function<uint32_t(char*, const uint32_t)> FileLineReader;
+typedef std::function<void(const char*, const uint32_t)> FileWriter;
 typedef std::function<FileLineReader(const std::string&)> FileReaderProvider;
-typedef std::function<FileLineWriter(const std::string&)> FileWriterProvider;
+typedef std::function<FileWriter(const std::string&)> FileWriterProvider;
 
-typedef std::function<void(const std::string& file1, 
+typedef std::function<void(const std::function<std::optional<std::tuple<std::string,std::string>>()> filenameFetcher, 
                            const std::string& file2,
                            const std::string& outFile,
-                           const FileReaderProvider&,
-                           const FileWriterProvider&,
-                           const std::string&,
-                           const uint64_t maxAllowedHeapMemory)> FileMerger;
+                           const FileReaderProvider& fileReaderProvider,
+                           const FileWriterProvider& fileWriterProvider,
+                           const std::string& outFileName,
+                           const std::function<void(const std::string&)> outFileNotifier,
+                           const uint64_t maxHeapSize)> FileMerger;
 
 class MDEntrry
 {
@@ -41,7 +46,7 @@ class MDEntrry
       m_ms   = m_ss + 3;
     }
 
-    int compareYear(const char* y1, const char* y2)
+    int compareYear(const char* y1, const char* y2) const
     {
       uint8_t comp = 0;
       uint8_t i = 0;
@@ -64,7 +69,7 @@ class MDEntrry
       return comp;
     }
 
-    int compareMonth(const char* m1, const char* m2)
+    int compareMonth(const char* m1, const char* m2) const
     {
       uint8_t comp = 0;
       uint8_t i = 0;
@@ -87,7 +92,7 @@ class MDEntrry
       return comp;
     }
 
-    int compareday(const char* d1, const char* d2)
+    int compareday(const char* d1, const char* d2) const
     {
       uint8_t comp = 0;
       uint8_t i = 0;
@@ -110,7 +115,7 @@ class MDEntrry
       return comp;
     }
 
-    int compareHour(const char* h1, const char* h2)
+    int compareHour(const char* h1, const char* h2) const
     {
       uint8_t comp = 0;
       uint8_t i = 0;
@@ -133,7 +138,7 @@ class MDEntrry
       return comp;
     }
 
-    int compareMinute(const char* min1, const char* min2)
+    int compareMinute(const char* min1, const char* min2) const
     {
       uint8_t comp = 0;
       uint8_t i = 0;
@@ -156,7 +161,7 @@ class MDEntrry
       return comp;
     }
 
-    int compareSec(const char* s1, const char* s2)
+    int compareSec(const char* s1, const char* s2) const
     {
       uint8_t comp = 0;
       uint8_t i = 0;
@@ -179,7 +184,7 @@ class MDEntrry
       return comp;
     }
 
-    int compareMs(const char* ms1, const char* ms2)
+    int compareMs(const char* ms1, const char* ms2) const
     {
       uint8_t comp = 0;
       uint8_t i = 0;
@@ -202,7 +207,7 @@ class MDEntrry
       return comp;
     }
 
-    int operator <=>(const MDTimeStamp& other)
+    int operator <=>(const MDTimeStamp& other) const
     {
       if (int comp = compareYear(m_yyyy, other.m_yyyy); comp != 0)
       {
@@ -255,10 +260,12 @@ class MDEntrry
     return raw+i+2;
   }
 
+  public:
+
   MDEntrry(const char* raw) : m_raw(raw), m_timestamp(findTimeStampStart(raw))
   {}
 
-  int operator<=>(const MDEntrry& other)
+  int operator<=>(const MDEntrry& other) const
   {
     if (int comp = (m_timestamp <=> other.m_timestamp); 0 != comp)
     {
@@ -318,16 +325,24 @@ int main(int argc, char** argv)
     auto fileHandle = std::make_shared<std::ifstream>(filename, std::ifstream::in);
     FileLineReader flr =
     [fileHandle]
-    (std::string& buff)
+    (char* buff, const uint32_t len)
     {
-      static bool headerRead = false;
-      if (!headerRead)
+      char* currPtr = buff;
+      char currCh = '\0';
+      uint32_t charactersRead = 0;
+      for (;currCh != '\n' && currCh != EOF && currPtr - buff < len; *(currPtr++) = currCh)
       {
-        std::getline(*fileHandle, buff);
-        headerRead = true;
+        currCh = fileHandle->get();
+      }
+      
+      uint32_t ret = 0;
+      if (EOF != currCh)
+      {
+        *currPtr = '\n';
+        ret = currPtr - buff + 1;
       }
 
-      return (bool)std::getline(*fileHandle, buff);
+      return ret;
     };
 
     return flr;
@@ -337,32 +352,106 @@ int main(int argc, char** argv)
   [](const std::string& filename)
   {
     auto fileHandle = std::make_shared<std::ofstream>(filename, std::ofstream::out);
-    FileLineWriter flw =
+    FileWriter flw =
     [fileHandle]
-    (const std::string& buff)
+    (const char* buff, const uint32_t len)
     {
       static bool headerWritten = false;
       if (!headerWritten) 
       {
-        (*fileHandle) << "Timestamp, Price, Size, Exchange, Type" << std::endl;
+        (*fileHandle) << "Symbol, Timestamp, Price, Size, Exchange, Type\n";
         headerWritten = true;
       }
 
-      (*fileHandle) << buff << std::endl;
+      fileHandle->write(buff, len);
     };
 
     return flw;
   };
 
-  auto reader = frp(argv[1]);
-  auto writer = fwp(argv[2]);
 
-  std::string buff;
-  buff.reserve(256);
-  while (reader(buff))
+  std::queue<std::string> remainingFiles;
+  for (uint32_t i = 0; i <= argc; i++)
   {
-    writer(buff);
+    remainingFiles.push(argv[i]);
   }
+
+  FileMerger fm =
+  []
+  (const std::function<std::optional<std::tuple<std::string,std::string>>()>& filenameFetcher, 
+   const std::string& file2,
+   const std::string& outFile,
+   const FileReaderProvider& fileReaderProvider,
+   const FileWriterProvider& fileWriterProvider,
+   const std::string& outFileName,
+   const std::function<void(const std::string&)>& outFileNotifier,
+   const uint64_t maxHeapSize)
+  {
+    char* buff = reinterpret_cast<char*>(malloc(maxHeapSize));
+    char* curr = buff;
+    uint64_t bytesRemaining  = maxHeapSize;
+    auto fileNames = filenameFetcher();
+    if (!fileNames)
+    {
+      return;
+    }
+
+    auto const& [fn1, fn2] = fileNames.value();
+    auto fileReader1 = fileReaderProvider(fn1);
+    auto fileReader2 = fileReaderProvider(fn2);
+
+    //Lines read from each of the files
+    char l1[256];
+    char l2[256];
+
+    uint32_t nl1 = fileReader1(l1, sizeof(l1));
+    uint32_t nl2 = fileReader2(l2, sizeof(l2));
+    auto fileWriter = fileWriterProvider(outFile);
+
+    while (nl1 && nl2)
+    {
+      MDEntrry md1(reinterpret_cast<const char*>(l1));
+      MDEntrry md2(reinterpret_cast<const char*>(l2));
+
+      if (md1 <=> md2 < 0)
+      {
+        if(bytesRemaining < nl1)
+        {
+          fileWriter(buff, curr - buff);
+          curr = buff;
+          bytesRemaining = maxHeapSize;
+        }
+
+        memcpy(curr, l1, nl1);
+        curr += nl1;
+        nl1 = fileReader1(l1, sizeof(l1));
+      }
+      else
+      {
+        if(bytesRemaining < nl2)
+        {
+          fileWriter(buff, curr - buff);
+          curr = buff;
+          bytesRemaining = maxHeapSize;
+        }
+
+        memcpy(curr, l2, nl2);
+        curr += nl2;
+        nl2 = fileReader1(l2, sizeof(l2));
+      }
+    }
+
+    if (curr > buff)
+    {
+      fileWriter(buff, curr - buff);
+    }
+
+    free(buff);
+
+  };
+
+
+  
 
   return 0;
 }
