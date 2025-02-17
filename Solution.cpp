@@ -12,19 +12,49 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef std::function<uint32_t(char[256])> FileLineReader;
+typedef std::function<uint8_t(char* buff)> FileLineReader;
 typedef std::function<void(const char*, const uint32_t)> FileWriter;
 typedef std::function<FileLineReader(const std::string&)> FileReaderProvider;
 typedef std::function<FileWriter(const std::string&)> FileWriterProvider;
 
-typedef std::function<void(const std::function<std::optional<std::tuple<std::string,std::string>>()> filenameFetcher, 
-                           const std::string& file2,
-                           const std::string& outFile,
-                           const FileReaderProvider& fileReaderProvider,
-                           const FileWriterProvider& fileWriterProvider,
-                           const std::string& outFileName,
-                           const std::function<void(const std::string&)> outFileNotifier,
-                           const uint64_t maxHeapSize)> FileMerger;
+typedef std::function<bool(const std::function<std::optional<std::tuple<std::string,std::string>>()>, 
+                           const FileReaderProvider&,
+                           const FileWriterProvider&,
+                           const std::function<void(const std::string&)>,
+                           const uint64_t)> FileMerger;
+
+uint32_t readNextLine(const FileLineReader& reader,
+                      char* buff,
+                      const std::string& symbol)
+{
+  
+  uint8_t offSet = 0;
+  if (symbol.length() != 0)
+  {
+    memcpy(buff, symbol.c_str(), symbol.length());
+    memcpy(buff + symbol.length(), ", ", 2);
+    offSet = symbol.length() + 2;
+    buff += offSet;
+  }
+
+  uint32_t bytesReadFromFile = reader(buff);
+  return bytesReadFromFile? bytesReadFromFile + offSet : 0;
+}
+
+std::string generateRandomString(const int len) {
+  static const char alphanum[] =
+      "0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
+  std::string res;
+  res.reserve(len);
+
+  for (int i = 0; i < len; ++i) {
+      res += alphanum[rand() % (sizeof(alphanum) - 1)];
+  }
+  
+  return res;
+}
 
 class MDEntrry
 {
@@ -42,7 +72,7 @@ class MDEntrry
       m_dd   = m_mm + 3;
       m_hh   = m_dd + 3;
       m_min  = m_hh + 3;
-      m_ss   = m_hh + 3;
+      m_ss   = m_min + 3;
       m_ms   = m_ss + 3;
     }
 
@@ -325,20 +355,19 @@ int main(int argc, char** argv)
     auto fileHandle = std::make_shared<std::ifstream>(filename, std::ifstream::in);
     FileLineReader flr =
     [fileHandle]
-    (char buff[256])
+    (char *buff)
     {
-      char* currPtr = reinterpret_cast<char*>(buff);
-      char currCh = '\0';
-      for (;currCh != '\n' && currCh != EOF; *(currPtr++) = currCh)
+      uint8_t ret = 0;
+      if(fileHandle->getline(buff, 256); buff[0] != '\0')
       {
-        currCh = fileHandle->get();
-      }
-      
-      uint32_t ret = 0;
-      if (EOF != currCh)
-      {
-        *currPtr = '\n';
-        ret = currPtr - buff + 1;
+        if (buff[0] < '0' || buff[0] > '9')
+        {
+          fileHandle->getline(buff, 256);
+        }
+
+        uint8_t len = strlen(buff);
+        buff[len] = '\n';
+        ret = len + 1;
       }
 
       return ret;
@@ -355,13 +384,6 @@ int main(int argc, char** argv)
     [fileHandle]
     (const char* buff, const uint32_t len)
     {
-      static bool headerWritten = false;
-      if (!headerWritten) 
-      {
-        (*fileHandle) << "Symbol, Timestamp, Price, Size, Exchange, Type\n";
-        headerWritten = true;
-      }
-
       fileHandle->write(buff, len);
     };
 
@@ -369,20 +391,13 @@ int main(int argc, char** argv)
   };
 
 
-  std::queue<std::string> remainingFiles;
-  for (uint32_t i = 0; i <= argc; i++)
-  {
-    remainingFiles.push(argv[i]);
-  }
+  
 
   FileMerger fm =
   []
   (const std::function<std::optional<std::tuple<std::string,std::string>>()>& filenameFetcher, 
-   const std::string& file2,
-   const std::string& outFile,
    const FileReaderProvider& fileReaderProvider,
    const FileWriterProvider& fileWriterProvider,
-   const std::string& outFileName,
    const std::function<void(const std::string&)>& outFileNotifier,
    const uint64_t maxHeapSize)
   {
@@ -392,10 +407,41 @@ int main(int argc, char** argv)
     auto fileNames = filenameFetcher();
     if (!fileNames)
     {
-      return;
+      return false;
     }
 
     auto const& [fn1, fn2] = fileNames.value();
+    std::string symbol1 = "";
+    std::string symbol2 = "";
+    symbol1.reserve(fn1.length() + 1);
+    symbol2.reserve(fn2.length() + 1);
+
+    bool f1IsIntermediateFile = false;
+    bool f2IsIntermediateFile = false;
+
+    
+    if (std::size_t pos = fn1.find_first_of("."); 
+        0 == strcmp(".csv", fn1.c_str() + pos)
+       )
+    {
+      f1IsIntermediateFile = true;
+    }
+    else
+    {
+      symbol1 = std::move(fn1.substr(0, pos));
+    }
+
+    if (std::size_t pos = fn2.find_first_of("."); 
+        0 == strcmp(".csv", fn2.c_str() + pos)
+       )
+    {
+      f1IsIntermediateFile = true;
+    }
+    else
+    {
+      symbol2 = std::move(fn2.substr(0, pos));
+    }
+
     auto fileReader1 = fileReaderProvider(fn1);
     auto fileReader2 = fileReaderProvider(fn2);
 
@@ -403,10 +449,13 @@ int main(int argc, char** argv)
     char l1[256];
     char l2[256];
 
-    uint32_t nl1 = fileReader1(l1);
-    uint32_t nl2 = fileReader2(l2);
+    uint32_t nl1 = readNextLine(fileReader1, l1, symbol1);
+    uint32_t nl2 = readNextLine(fileReader2, l2, symbol2);
+    std::string outFile = generateRandomString(20) + ".csv";
     auto fileWriter = fileWriterProvider(outFile);
 
+    const char* str = "Symbol, Timestamp, Price, Size, Exchange, Type\n";
+    fileWriter(str, strlen(str));
     while (nl1 && nl2)
     {
       MDEntrry md1(reinterpret_cast<const char*>(l1));
@@ -423,7 +472,8 @@ int main(int argc, char** argv)
 
         memcpy(curr, l1, nl1);
         curr += nl1;
-        nl1 = fileReader1(l1);
+        bytesRemaining -= nl1;
+        nl1 = readNextLine(fileReader1, l1, symbol1);
       }
       else
       {
@@ -436,7 +486,52 @@ int main(int argc, char** argv)
 
         memcpy(curr, l2, nl2);
         curr += nl2;
-        nl2 = fileReader1(l2);
+        bytesRemaining -= nl2;
+        nl2 = readNextLine(fileReader2, l2, symbol2);
+      }
+    }
+
+    if (curr > buff)
+    {
+      fileWriter(buff, curr - buff);
+    }
+
+    curr = buff;
+    bytesRemaining = maxHeapSize;
+
+    if (!nl1)
+    {
+      while (nl2 != 0)
+      {
+        if(bytesRemaining < nl2)
+        {
+          fileWriter(buff, curr - buff);
+          curr = buff;
+          bytesRemaining = maxHeapSize;
+        }
+
+        memcpy(curr, l2, nl2);
+        curr += nl2;
+        bytesRemaining -= nl2;
+        nl2 = readNextLine(fileReader2, l2, symbol2);
+      }
+    }
+
+    if (!nl2)
+    {
+      while (nl1 != 0)
+      {
+        if(bytesRemaining < nl1)
+        {
+          fileWriter(buff, curr - buff);
+          curr = buff;
+          bytesRemaining = maxHeapSize;
+        }
+
+        memcpy(curr, l1, nl1);
+        curr += nl1;
+        bytesRemaining -= nl1;
+        nl1 = readNextLine(fileReader1, l1, symbol1);
       }
     }
 
@@ -446,11 +541,60 @@ int main(int argc, char** argv)
     }
 
     free(buff);
+    return true;
 
   };
 
+  std::function<void(std::queue<std::string>&)> mergeAllFiles = [fm, frp, fwp](std::queue<std::string>& fileNames) {
+    const std::function<
+    std::optional<std::tuple<std::string, std::string>>()
+    > mergeFileFetcher =
+    [&fileNames]()
+    {
+      std::optional<std::tuple<std::string,std::string>> res;
+      if(fileNames.size() >= 2)
+      {
+        std::string f1 = fileNames.front();
+        fileNames.pop();
+        std::string f2 = fileNames.front();
+        fileNames.pop();
 
-  
+        res = std::make_tuple(f1, f2);
+      }
+      else
+      {
+        res = std::nullopt;
+      }
 
+      return res;
+    };
+
+    std::function<void(const std::string&)> onOutFileCreated =
+    [&fileNames](const std::string& outFile)
+    {
+      fileNames.push(outFile);
+    };
+
+    std::function<uint32_t()> fetchNumRemainingFiles =
+    [&fileNames]()
+    {
+      return fileNames.size();
+    };
+
+
+
+    while(fetchNumRemainingFiles() >= 2)
+    {
+      fm(mergeFileFetcher, frp, fwp, onOutFileCreated, 2*1024*1024 );
+    }
+  };
+
+  std::queue<std::string> remainingFiles;
+  for (uint32_t i = 1; i < argc; i++)
+  {
+    remainingFiles.push(argv[i]);
+  }
+
+  mergeAllFiles(remainingFiles);
   return 0;
 }
