@@ -434,17 +434,20 @@ void entryPoint(uint8_t numThreads,
 {
   std::thread* threads[8];
 
-  for (uint8_t i = 0; i < numThreads; i++)
+  // 1 thread is this thread so, numThreads - 1
+  for (uint8_t i = 0; i < numThreads - 1; i++)
   {
     threads[i] = new std::thread([remainingFiles, mutex, fm, frp, fwp, maxHeapSize, numThreads](){ mergeAllFiles(remainingFiles, mutex, fm, frp, fwp, maxHeapSize/numThreads);});
   }
 
-  for (uint8_t i = 0; i < numThreads; i++)
+  mergeAllFiles(remainingFiles, mutex, fm, frp, fwp, maxHeapSize/numThreads);
+
+  for (uint8_t i = 0; i < numThreads - 1; i++)
   {
     threads[i]->join();
   }
 
-  for (uint8_t i = 0; i < numThreads; i++)
+  for (uint8_t i = 0; i < numThreads - 1; i++)
   {
     delete threads[i];
   }

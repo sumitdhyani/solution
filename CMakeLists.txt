@@ -13,8 +13,9 @@ if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
 endif()
 
 
-#add_subdirectory("UnitTests")
-
 project(Solution)
-
 add_executable(Solution Solution.cpp)
+add_library(libSolution STATIC Solution.cpp)
+
+add_subdirectory("UnitTests")
+
