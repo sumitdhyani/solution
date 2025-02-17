@@ -401,6 +401,32 @@ void mergeAllFiles(std::shared_ptr<std::queue<std::string>> fileNames,
   }
 }
 
+void entryPoint(uint8_t numThreads,
+    std::shared_ptr<std::queue<std::string>> remainingFiles,
+    std::shared_ptr<std::mutex> mutex,
+    FileMerger fm,
+    FileReaderProvider frp,
+    FileWriterProvider fwp)
+{
+  std::thread* threads[8];
+
+  for (uint8_t i = 0; i < numThreads; i++)
+  {
+    threads[i] = new std::thread([remainingFiles, mutex, fm, frp, fwp](){ mergeAllFiles(remainingFiles, mutex, fm, frp, fwp);});
+  }
+
+  for (uint8_t i = 0; i < numThreads; i++)
+  {
+    threads[i]->join();
+  }
+
+  for (uint8_t i = 0; i < numThreads; i++)
+  {
+    delete threads[i];
+  }
+
+  std::rename(remainingFiles->front().c_str(), "MultiplexedFile.txt");
+}
 int main(int argc, char** argv)
 {
   if (argc < 3)
@@ -450,9 +476,6 @@ int main(int argc, char** argv)
 
     return fw;
   };
-
-
-  
 
   FileMerger fm =
   []
@@ -613,24 +636,7 @@ int main(int argc, char** argv)
     remainingFiles->push(argv[i]);
   }
 
-  uint8_t numThreads  = 8;
-  std::thread* threads[8];
-
-  for (uint8_t i = 0; i < numThreads; i++)
-  {
-    threads[i] = new std::thread([remainingFiles, mutex, fm, frp, fwp](){mergeAllFiles(remainingFiles, mutex, fm, frp, fwp);});
-  }
-
-  for (uint8_t i = 0; i < numThreads; i++)
-  {
-    threads[i]->join();
-  }
-
-  for (uint8_t i = 0; i < numThreads; i++)
-  {
-    delete threads[i];
-  }
-
-  std::rename(remainingFiles->front().c_str(), "MultiplexedFile.txt");
+  entryPoint(8, remainingFiles, mutex, fm, frp, fwp);
+  
   return 0;
 }
