@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef std::function<uint32_t(char*, const uint32_t)> FileLineReader;
+typedef std::function<uint32_t(char[256])> FileLineReader;
 typedef std::function<void(const char*, const uint32_t)> FileWriter;
 typedef std::function<FileLineReader(const std::string&)> FileReaderProvider;
 typedef std::function<FileWriter(const std::string&)> FileWriterProvider;
@@ -325,12 +325,11 @@ int main(int argc, char** argv)
     auto fileHandle = std::make_shared<std::ifstream>(filename, std::ifstream::in);
     FileLineReader flr =
     [fileHandle]
-    (char* buff, const uint32_t len)
+    (char buff[256])
     {
-      char* currPtr = buff;
+      char* currPtr = reinterpret_cast<char*>(buff);
       char currCh = '\0';
-      uint32_t charactersRead = 0;
-      for (;currCh != '\n' && currCh != EOF && currPtr - buff < len; *(currPtr++) = currCh)
+      for (;currCh != '\n' && currCh != EOF; *(currPtr++) = currCh)
       {
         currCh = fileHandle->get();
       }
@@ -404,8 +403,8 @@ int main(int argc, char** argv)
     char l1[256];
     char l2[256];
 
-    uint32_t nl1 = fileReader1(l1, sizeof(l1));
-    uint32_t nl2 = fileReader2(l2, sizeof(l2));
+    uint32_t nl1 = fileReader1(l1);
+    uint32_t nl2 = fileReader2(l2);
     auto fileWriter = fileWriterProvider(outFile);
 
     while (nl1 && nl2)
@@ -424,7 +423,7 @@ int main(int argc, char** argv)
 
         memcpy(curr, l1, nl1);
         curr += nl1;
-        nl1 = fileReader1(l1, sizeof(l1));
+        nl1 = fileReader1(l1);
       }
       else
       {
@@ -437,7 +436,7 @@ int main(int argc, char** argv)
 
         memcpy(curr, l2, nl2);
         curr += nl2;
-        nl2 = fileReader1(l2, sizeof(l2));
+        nl2 = fileReader1(l2);
       }
     }
 
