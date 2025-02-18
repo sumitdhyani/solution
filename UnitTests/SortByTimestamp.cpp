@@ -78,6 +78,8 @@ int main()
   std::string(header) + "\n"+
   "MSFT, " + mockEntry_MSFT + "\n" +
   "CSCO, " + mockEntry_CSCO + "\n";
+
   
-  assert(0 == memcmp(outBuffer, str.c_str(), str.length()));
+  assert(totalLen == str.length());
+  assert(memcmp(outBuffer, str.c_str(), totalLen) == 0);
 }

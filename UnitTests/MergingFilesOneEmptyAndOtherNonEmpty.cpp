@@ -66,5 +66,6 @@ int main()
   std::string str = 
   std::string(header) + "\n"+
   "MSFT, " + mockEntry + "\n";
+  assert(totalLen == str.length());
   assert(0 == memcmp(outBuffer, str.c_str(), str.length()));
 }

@@ -79,5 +79,6 @@ int main()
   "CSCO, " + mockEntry_CSCO + "\n" +
   "MSFT, " + mockEntry_MSFT + "\n";
   
+  assert(totalLen == str.length());
   assert(0 == memcmp(outBuffer, str.c_str(), str.length()));
 }
