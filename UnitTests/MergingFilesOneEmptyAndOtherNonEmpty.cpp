@@ -63,12 +63,8 @@ int main()
              fileReaderProvider,
              fileWriterProvider);
 
-  char* curr = (char*)outBuffer;
-  assert(totalLen == strlen("MSFT, ") + strlen(header) + strlen(mockEntry) + 2);
-  assert(0 == memcmp(curr, header, strlen(header)));
-  assert('\n' == curr[strlen(header)]);
-
-  curr += strlen(header) + strlen("MSFT, ") + 1;
-  assert(0 == memcmp(curr, mockEntry, strlen(mockEntry)));
-  assert('\n' == curr[strlen(mockEntry)]);
+  std::string str = 
+  std::string(header) + "\n"+
+  "MSFT, " + mockEntry + "\n";
+  assert(0 == memcmp(outBuffer, str.c_str(), str.length()));
 }
