@@ -12,6 +12,7 @@ target_include_directories(MergingFilesOneEmptyAndOtherNonEmpty PUBLIC ${INCLUDE
 target_link_directories(MergingFilesOneEmptyAndOtherNonEmpty PUBLIC "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
 target_link_libraries(MergingFilesOneEmptyAndOtherNonEmpty PUBLIC libSolution)
 
-#add_executable(LinkedListAllocatorTests LinkedListAllocatorTests.cpp)
-#target_include_directories(LinkedListAllocatorTests PUBLIC ${LIB_DIRS})
-#target_link_libraries(LinkedListAllocatorTests ${LIBS})
+add_executable(SortAlphabeticallyIfTimestampEqual SortAlphabeticallyIfTimestampEqual.cpp)
+target_include_directories(SortAlphabeticallyIfTimestampEqual PUBLIC ${INCLUDE_DIRS})
+target_link_directories(SortAlphabeticallyIfTimestampEqual PUBLIC "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
+target_link_libraries(SortAlphabeticallyIfTimestampEqual PUBLIC libSolution)
