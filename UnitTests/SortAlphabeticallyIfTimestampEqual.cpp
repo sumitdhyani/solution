@@ -78,6 +78,9 @@ int main()
   std::string(header) + "\n"+
   "CSCO, " + mockEntry_CSCO + "\n" +
   "MSFT, " + mockEntry_MSFT + "\n";
+
+  std::cout << "Contents of outfile:" << std::endl;
+  std::cout << std::string(outBuffer, totalLen);
   
   assert(totalLen == str.length());
   assert(0 == memcmp(outBuffer, str.c_str(), str.length()));

@@ -63,9 +63,13 @@ int main()
              fileReaderProvider,
              fileWriterProvider);
 
-  std::string str = 
+  std::string expected = 
   std::string(header) + "\n"+
   "MSFT, " + mockEntry + "\n";
-  assert(totalLen == str.length());
-  assert(0 == memcmp(outBuffer, str.c_str(), str.length()));
+
+  std::cout << "Contents of outfile:" << std::endl;
+  std::cout << std::string(outBuffer, totalLen);
+  
+  assert(totalLen == expected.length());
+  assert(0 == memcmp(outBuffer, expected.c_str(), expected.length()));
 }

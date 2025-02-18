@@ -74,12 +74,14 @@ int main()
              fileReaderProvider,
              fileWriterProvider);
 
-  std::string str = 
+  std::string expected = 
   std::string(header) + "\n"+
   "MSFT, " + mockEntry_MSFT + "\n" +
   "CSCO, " + mockEntry_CSCO + "\n";
 
+  std::cout << "Contents of outfile:" << std::endl;
+  std::cout << std::string(outBuffer, totalLen);
   
-  assert(totalLen == str.length());
-  assert(memcmp(outBuffer, str.c_str(), totalLen) == 0);
+  assert(totalLen == expected.length());
+  assert(memcmp(outBuffer, expected.c_str(), totalLen) == 0);
 }

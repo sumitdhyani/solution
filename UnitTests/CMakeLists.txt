@@ -21,3 +21,8 @@ add_executable(SortByTimestamp SortByTimestamp.cpp)
 target_include_directories(SortByTimestamp PUBLIC ${INCLUDE_DIRS})
 target_link_directories(SortByTimestamp PUBLIC "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
 target_link_libraries(SortByTimestamp PUBLIC libSolution)
+
+add_executable(MergeUnequalSizedFiles MergeUnequalSizedFiles.cpp)
+target_include_directories(MergeUnequalSizedFiles PUBLIC ${INCLUDE_DIRS})
+target_link_directories(MergeUnequalSizedFiles PUBLIC "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
+target_link_libraries(MergeUnequalSizedFiles PUBLIC libSolution)

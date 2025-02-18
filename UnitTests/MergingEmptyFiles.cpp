@@ -16,7 +16,7 @@ int main()
     };
   };
 
-  uint32_t totalLen;
+  uint32_t totalLen = 0;
   char outBuffer[256];
   FileWriterProvider fileWriterProvider =
   [header, &outBuffer, &totalLen](const std::string&)
@@ -39,7 +39,11 @@ int main()
              mergeFiles,
              fileReaderProvider,
              fileWriterProvider);
-  assert(0 == memcmp(outBuffer, header, strlen(header)));
-  assert(totalLen == strlen(header) + 1);
-  assert(outBuffer[totalLen-1] == '\n');
+  std::string expected = std::string(header) + "\n";
+
+  std::cout << "Contents of outfile:" << std::endl;
+  std::cout << std::string(outBuffer, totalLen);
+
+  assert(totalLen == expected.length());
+  assert(0 == memcmp(outBuffer, expected.c_str(), expected.length()));
 }
