@@ -16,3 +16,8 @@ add_executable(SortAlphabeticallyIfTimestampEqual SortAlphabeticallyIfTimestampE
 target_include_directories(SortAlphabeticallyIfTimestampEqual PUBLIC ${INCLUDE_DIRS})
 target_link_directories(SortAlphabeticallyIfTimestampEqual PUBLIC "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
 target_link_libraries(SortAlphabeticallyIfTimestampEqual PUBLIC libSolution)
+
+add_executable(SortByTimestamp SortByTimestamp.cpp)
+target_include_directories(SortByTimestamp PUBLIC ${INCLUDE_DIRS})
+target_link_directories(SortByTimestamp PUBLIC "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
+target_link_libraries(SortByTimestamp PUBLIC libSolution)
