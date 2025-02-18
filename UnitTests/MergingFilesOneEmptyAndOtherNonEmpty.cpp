@@ -56,7 +56,7 @@ int main()
   inputFiles->push("CSCO.txt");
   inputFiles->push("MSFT.txt");
   entryPoint(numThreads, 
-             128,
+             1024,
              inputFiles,
              std::make_shared<std::mutex>(),
              mergeFiles,

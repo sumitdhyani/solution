@@ -33,7 +33,7 @@ int main()
   inputFiles->push("file1.txt");
   inputFiles->push("file2.txt");
   entryPoint(numThreads, 
-             2,
+             1024,
              inputFiles,
              std::make_shared<std::mutex>(),
              mergeFiles,
