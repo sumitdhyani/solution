@@ -470,8 +470,11 @@ FileLineReader getFileLineReader(const std::string& filename)
       }
 
       uint8_t len = strlen(buff);
-      buff[len] = '\n';
-      ret = len + 1;
+      if (len > 0)
+      {
+        buff[len] = '\n';
+        ret = len + 1;
+      }
     }
 
     return ret;
@@ -505,7 +508,6 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
   // 
   // "buff" is the buffer that holds the intermidate result of the merge
   char* buff = reinterpret_cast<char*>(malloc(maxHeapSize));
-  char* curr = buff;
   uint64_t bytesRemaining  = maxHeapSize;
   auto fileNames = filenameFetcher();
   if (!fileNames)
@@ -555,6 +557,7 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
 
   // Just like the "merge" step of merge sort, keep picking the
   // "lesser" fron element until EOF is obtained in one of the files
+  char* curr = buff;
   while (nl1 && nl2)
   {
     MDEntrry md1(reinterpret_cast<const char*>(l1));

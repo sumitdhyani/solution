@@ -8,7 +8,7 @@ int main()
   const char* header = "Symbol, Timestamp, Price, Size, Exchange, Type";
 
   FileReaderProvider fileReaderProvider =
-  [header](const std::string&)
+  [](const std::string&)
   {
     return [](char* buff)
     {
@@ -21,7 +21,7 @@ int main()
   FileWriterProvider fileWriterProvider =
   [header, &outBuffer, &totalLen](const std::string&)
   {
-    return [&outBuffer, &totalLen, &header](const char* buff, uint32_t len)
+    return [&outBuffer, &totalLen](const char* buff, uint32_t len)
     {
       memcpy(outBuffer, buff, len);
       totalLen += len;

@@ -15,7 +15,7 @@
  * If EOF is reached, should return 0.
  *
  * @param  buff   Output line buffer.
- *                If the line is successfully read, the a null terminated
+ *                If the line is successfully read, the a \n terminated
  *                string should be written to the buffer.
  *                Pass it as 0 to close the file.
  * @return        No. of bytes read in this read operation
