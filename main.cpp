@@ -16,23 +16,33 @@ FileLineReader getFileLineReader(const std::string& filename)
     {
       fileHandle->close();
     }
-    else if(fileHandle->is_open() &&
-            fileHandle->getline(buff, 256); buff[0] != '\0')
+    else
     {
-      if (memcmp(buff, "Symbol", strlen("Symbol")) == 0 ||
-          memcmp(buff, "Timestamp", strlen("Timestamp")) == 0)
+      char temp = buff[0];
+      if(fileHandle->is_open() &&
+              fileHandle->getline(buff, 256); buff[0] != '\0')
       {
-        fileHandle->getline(buff, 256);
-      }
+        if (memcmp(buff, "Symbol", strlen("Symbol")) == 0 ||
+            memcmp(buff, "Timestamp", strlen("Timestamp")) == 0)
+        {
+          fileHandle->getline(buff, 256);
+        }
 
-      uint8_t len = strlen(buff);
-      if (len > 0)
-      {
-        buff[len] = '\n';
-        ret = len + 1;
+        uint8_t len = strlen(buff);
+        if (len > 0)
+        {
+          buff[len] = '\n';
+          ret = len + 1;
+        }
+        else
+        {
+          // In case we reached EOF, buff[0] will be set to 0
+          // We need to restore the original state of the output buffer
+          buff[0] = temp;
+        }
       }
     }
-
+    
     return ret;
   };
 
