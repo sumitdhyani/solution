@@ -61,29 +61,6 @@ typedef std::function<void(const std::string& file1, const std::string& file2, c
 typedef std::tuple<std::string, std::string> MergeFilePair;
 
 /**
- * An interface to merge 2 files and write output to a 3rd, intermediate file
- *
- * @param  mergeFileFetcher         An std::function to get the next 2 files to be merged
- *                                  If there is just 1 file, in the queue containg files to be merged,
- *                                  it will return std::nullopt which will mean that all the files have
- *                                  merged and the only file in the queue is the final Multiplexed file
- * @param  fileReaderProvider       A FileReaderProvider(explained above)
- * @param  fileWriterProvider       A FileWriterProvider(explained above)
- * @param  mergeNotificationHandler A MergeNotificationHandler(explained above)
- * @param  maxHeapSize              Max amount of hep it can allocate to hold intermediate results
- *                                  If the required memory exceeds this value, then the intermediate result is
- *                                  written to the outFile
- * @return                          Returns true if there were atleast 2 files in the queue and hence they were merged
- *                                  Returns false otherwise 
-*/
-
-typedef std::function<bool(const std::function<std::optional<MergeFilePair>()> mergeFileFetcher, 
-                           const FileReaderProvider fileReaderProvider,
-                           const FileWriterProvider fileWriterProvider,
-                           const MergeNotificationHandler mergeNotificationHandler,
-                           const uint64_t maxHeapSize)> FileMerger;
-
-/**
  * This is the like the main function. Declared here to make the code unit testable
  * One can easily pass mock IO interfaces to this method for the purpose of Unit Testing
  *
@@ -98,19 +75,5 @@ void entryPoint(uint8_t numThreads,
                 uint64_t maxHeapSize,
                 std::shared_ptr<std::queue<std::string>> filesToMerge,
                 std::shared_ptr<std::mutex> mutex,
-                FileMerger fileMerger,
                 FileReaderProvider fileReaderProvider,
                 FileWriterProvider fileWriterProvider);
-
-// Used in production implementation, defined in Solution.cpp details mentioned above implementation 
-FileLineReader getFileLineReader(const std::string& filename);
-
-// Used in production implementation, defined in Solution.cpp details mentioned above implementation 
-FileWriter getFileWriter(const std::string& filename);
-
-// Used in production implementation, defined in Solution.cpp details mentioned above implementation 
-bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetcher, 
-                const FileReaderProvider fileReaderProvider,
-                const FileWriterProvider fileWriterProvider,
-                const MergeNotificationHandler outFileNotifier,
-                const uint64_t maxHeapSize);

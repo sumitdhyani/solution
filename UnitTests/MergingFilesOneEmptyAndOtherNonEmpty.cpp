@@ -59,7 +59,6 @@ int main()
              1024,
              inputFiles,
              std::make_shared<std::mutex>(),
-             mergeFiles,
              fileReaderProvider,
              fileWriterProvider);
 
@@ -69,7 +68,7 @@ int main()
 
   std::cout << "Contents of outfile:" << std::endl;
   std::cout << std::string(outBuffer, totalLen);
-  
+
   assert(totalLen == expected.length());
   assert(0 == memcmp(outBuffer, expected.c_str(), expected.length()));
 }

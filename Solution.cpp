@@ -3,7 +3,7 @@
 #include <string.h>
 #include <filesystem>
 #include "Solution.h"
-
+#include "MDEntry.h"
 // Algorithm overview:
 // Since the files are already sorted, the algorithm is to merge pairs of files
 // using the "merge" step used in the merge sort, i.e., select the "lesser" of the 
@@ -58,442 +58,6 @@ std::string generateRandomString(const int len) {
   }
   
   return res;
-}
-
-class MDEntrry
-{
-  struct MDTimeStamp
-  {
-    
-    public:
-    // "raw" should be in the format:
-    // Symbol, Timestamp, Price, Size, Exchange, Type
-
-    MDTimeStamp(const char* timestamp)
-    {
-      m_yyyy = timestamp;
-      m_mm   = m_yyyy + 5;
-      m_dd   = m_mm + 3;
-      m_hh   = m_dd + 3;
-      m_min  = m_hh + 3;
-      m_ss   = m_min + 3;
-      m_ms   = m_ss + 3;
-    }
-
-    int compareYear(const char* y1, const char* y2) const
-    {
-      int comp = 0;
-      uint8_t i = 0;
-      while (i < 4 && !comp)
-      {
-        if (y1[i] < y2[i])
-        {
-          comp = -1;
-        }
-        else if (y1[i] > y2[i])
-        {
-          comp = 1;
-        }
-        else
-        {
-          ++i;
-        }
-      }
-
-      return comp;
-    }
-
-    int compareMonth(const char* m1, const char* m2) const
-    {
-      int comp = 0;
-      uint8_t i = 0;
-      while (i < 2 && !comp)
-      {
-        if (m1[i] < m2[i])
-        {
-          comp = -1;
-        }
-        else if (m1[i] > m2[i])
-        {
-          comp = 1;
-        }
-        else
-        {
-          ++i;
-        }
-      }
-
-      return comp;
-    }
-
-    int compareday(const char* d1, const char* d2) const
-    {
-      int comp = 0;
-      uint8_t i = 0;
-      while (i < 2 && !comp)
-      {
-        if (d1[i] < d2[i])
-        {
-          comp = -1;
-        }
-        else if (d1[i] > d2[i])
-        {
-          comp = 1;
-        }
-        else
-        {
-          ++i;
-        }
-      }
-
-      return comp;
-    }
-
-    int compareHour(const char* h1, const char* h2) const
-    {
-      int comp = 0;
-      uint8_t i = 0;
-      while (i < 2 && !comp)
-      {
-        if (h1[i] < h2[i])
-        {
-          comp = -1;
-        }
-        else if (h1[i] > h2[i])
-        {
-          comp = 1;
-        }
-        else
-        {
-          ++i;
-        }
-      }
-
-      return comp;
-    }
-
-    int compareMinute(const char* min1, const char* min2) const
-    {
-      int comp = 0;
-      uint8_t i = 0;
-      while (i < 2 && !comp)
-      {
-        if (min1[i] < min2[i])
-        {
-          comp = -1;
-        }
-        else if (min1[i] > min2[i])
-        {
-          comp = 1;
-        }
-        else
-        {
-          ++i;
-        }
-      }
-
-      return comp;
-    }
-
-    int compareSec(const char* s1, const char* s2) const
-    {
-      int comp = 0;
-      uint8_t i = 0;
-      while (i < 2 && !comp)
-      {
-        if (s1[i] < s2[i])
-        {
-          comp = -1;
-        }
-        else if (s1[i] > s2[i])
-        {
-          comp = 1;
-        }
-        else
-        {
-          ++i;
-        }
-      }
-
-      return comp;
-    }
-
-    int compareMs(const char* ms1, const char* ms2) const
-    {
-      int comp = 0;
-      uint8_t i = 0;
-      while (i < 3 && !comp)
-      {
-        if (ms1[i] < ms2[i])
-        {
-          comp = -1;
-        }
-        else if (ms1[i] > ms2[i])
-        {
-          comp = 1;
-        }
-        else
-        {
-          ++i;
-        }
-      }
-
-      return comp;
-    }
-
-    int operator <=>(const MDTimeStamp& other) const
-    {
-      if (int comp = compareYear(m_yyyy, other.m_yyyy); comp != 0)
-      {
-        return comp;
-      }
-      else if(comp = compareMonth(m_mm, other.m_mm); comp != 0)
-      {
-        return comp;
-      }
-      else if(comp = compareday(m_dd, other.m_dd); comp != 0)
-      {
-        return comp;
-      }
-      else if(comp = compareHour(m_hh, other.m_hh); comp != 0)
-      {
-        return comp;
-      }
-      else if(comp = compareMinute(m_min, other.m_min); comp != 0)
-      {
-        return comp;
-      }
-      else if(comp = compareSec(m_ss, other.m_ss); comp != 0)
-      {
-        return comp;
-      }
-      else
-      {
-        return compareMs(m_ms, other.m_ms);
-      }
-      
-    }
-    
-    const char* m_yyyy;
-    const char* m_mm;
-    const char* m_dd;
-    const char* m_hh;
-    const char* m_min;
-    const char* m_ss;
-    const char* m_ms;
-  };
-
-  static const char* findTimeStampStart(const char* raw)
-  {
-    uint8_t i = 0;
-    while (raw[i] != ',')
-    {
-      ++i;
-    }
-
-    return raw+i+2;
-  }
-
-  public:
-
-  MDEntrry(const char* raw) : m_raw(raw), m_timestamp(findTimeStampStart(raw))
-  {}
-
-  int operator<=>(const MDEntrry& other) const
-  {
-    if (int comp = (m_timestamp <=> other.m_timestamp); 0 != comp)
-    {
-      return comp;
-    }
-    else
-    {
-      uint8_t i = 0;
-      while (0 == comp &&
-            m_raw[i] != ',' &&
-            other.m_raw[i] != ',')
-      {
-        if (m_raw[i] < other.m_raw[i])
-        {
-          comp = -1;
-        }
-        else if (m_raw[i] > other.m_raw[i])
-        {
-          comp = 1;
-        }
-
-        ++i;
-      }
-
-      if (0 == comp)
-      {
-        if (m_raw[i] == ',')
-        {
-          comp = other.m_raw[i] == ','? 0 : -1;
-        }
-        else
-        {
-          comp = m_raw[i] == ','? 0 : 1;
-        }
-      }
-
-      return comp;
-    }
-  }
-
-  private:
-  MDTimeStamp m_timestamp;
-  const char* m_raw;
-};
-
-/**
- * This function is the entry point for all the worker threads
- * This is the core logic for merging  2 files
- * It will pop files from 
- *
- * @param  inputFiles               A queue containing the names of files to be merged
- * @param  mutex                    A for synschronized access tot "inpuFiles"
- * @param  FileReaderProvider       A "FileReaderProvider"(explained in Solution.h)
- * @param  FileWriterProvider       A "FileWriterProvider"(explained in Solution.h)
- * @param  maxHeapSize              Max memory the thread in which it runs can allocate
- *                                  to hold intermediate resuts, before they ae written to an outfile
-*/
-void mergeAllFiles(std::shared_ptr<std::queue<std::string>> inputFiles,
-                   std::shared_ptr<std::mutex> mutex,
-                   FileMerger fileMerger,
-                   FileReaderProvider fileReaderProvider,
-                   FileWriterProvider fileWriterProvider,
-                   const uint64_t maxHeapSize)
-{
-  const std::function<std::optional<std::tuple<std::string, std::string>>()> mergeFileFetcher =
-  [inputFiles, mutex]()
-  {
-    std::optional<MergeFilePair> res = std::nullopt;
-    if(inputFiles->size() >= 2)
-    {
-    // Read-write the input-file queue in a critical section
-      std::unique_lock<std::mutex> lock(*mutex);
-      std::string f1 = inputFiles->front();
-      inputFiles->pop();
-      std::string f2 = inputFiles->front();
-      inputFiles->pop();
-
-      res = std::make_tuple(f1, f2);
-    }
-
-    return res;
-  };
-
-  MergeNotificationHandler mergeNotificationHandler =
-  [inputFiles, mutex](const std::string& f1, const std::string& f2, const std::string& outFile)
-  {
-    //.csv files are intermediate files, delete them after merge
-    if(f1.substr(f1.find_first_of(".")).compare(".csv") == 0)
-    {
-      std::remove(f1.c_str());
-    }
-
-    //.csv files are intermediate files, delete them after merge
-    if(f2.substr(f2.find_first_of(".")).compare(".csv") == 0)
-    {
-      std::remove(f2.c_str());
-    }
-
-    // Read-write the input-file queue in a critical section
-    std::unique_lock<std::mutex> lock(*mutex);
-    inputFiles->push(outFile);
-  };
-
-  std::function<uint32_t()> fetchNumRemainingFiles =
-  [inputFiles, mutex]()
-  {
-    // Read-write the input queue in a critical section
-    std::unique_lock<std::mutex> lock(*mutex);
-    return inputFiles->size();
-  };
-
-  while(fetchNumRemainingFiles() >= 2)
-  {
-    fileMerger(mergeFileFetcher, fileReaderProvider, fileWriterProvider, mergeNotificationHandler, maxHeapSize);
-  }
-}
-
-void entryPoint(uint8_t numThreads,
-    uint64_t maxHeapSize,
-    std::shared_ptr<std::queue<std::string>> remainingFiles,
-    std::shared_ptr<std::mutex> mutex,
-    FileMerger fm,
-    FileReaderProvider frp,
-    FileWriterProvider fwp)
-{
-  std::thread* threads[8];
-
-  // 1 thread is this thread so, numThreads - 1
-  for (uint8_t i = 0; i < numThreads - 1; i++)
-  {
-    threads[i] = new std::thread([remainingFiles, mutex, fm, frp, fwp, maxHeapSize, numThreads](){ mergeAllFiles(remainingFiles, mutex, fm, frp, fwp, maxHeapSize/numThreads);});
-  }
-
-  mergeAllFiles(remainingFiles, mutex, fm, frp, fwp, maxHeapSize/numThreads);
-
-  for (uint8_t i = 0; i < numThreads - 1; i++)
-  {
-    threads[i]->join();
-  }
-
-  for (uint8_t i = 0; i < numThreads - 1; i++)
-  {
-    delete threads[i];
-  }
-
-  std::rename(remainingFiles->front().c_str(), "MultiplexedFile.txt");
-}
-
-FileLineReader getFileLineReader(const std::string& filename)
-{
-  auto fileHandle = std::make_shared<std::ifstream>(filename, std::ifstream::in);
-  FileLineReader flr =
-  [fileHandle]
-  (char *buff)
-  {
-    uint8_t ret = 0;
-    if (nullptr == buff)
-    {
-      fileHandle->close();
-    }
-    else if(fileHandle->is_open() &&
-            fileHandle->getline(buff, 256); buff[0] != '\0')
-    {
-      if (memcmp(buff, "Symbol", strlen("Symbol")) == 0 ||
-          memcmp(buff, "Timestamp", strlen("Timestamp")) == 0)
-      {
-        fileHandle->getline(buff, 256);
-      }
-
-      uint8_t len = strlen(buff);
-      if (len > 0)
-      {
-        buff[len] = '\n';
-        ret = len + 1;
-      }
-    }
-
-    return ret;
-  };
-
-  return flr;
-}
-
-FileWriter getFileWriter(const std::string& filename)
-{
-  auto fileHandle = std::make_shared<std::ofstream>(filename, std::ofstream::out);
-  FileWriter fw =
-  [fileHandle]
-  (const char* buff, const uint32_t len)
-  {
-    fileHandle->write(buff, len);
-  };
-
-  return fw;
 }
 
 bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetcher, 
@@ -652,3 +216,105 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
   outFileNotifier(fn1, fn2, outFile);
   return true;
 }
+
+/**
+ * This function is the entry point for all the worker threads
+ * This is the core logic for merging  2 files
+ * It will pop files from 
+ *
+ * @param  inputFiles               A queue containing the names of files to be merged
+ * @param  mutex                    A for synschronized access tot "inpuFiles"
+ * @param  FileReaderProvider       A "FileReaderProvider"(explained in Solution.h)
+ * @param  FileWriterProvider       A "FileWriterProvider"(explained in Solution.h)
+ * @param  maxHeapSize              Max memory the thread in which it runs can allocate
+ *                                  to hold intermediate resuts, before they ae written to an outfile
+*/
+void mergeAllFiles(std::shared_ptr<std::queue<std::string>> inputFiles,
+                   std::shared_ptr<std::mutex> mutex,
+                   FileReaderProvider fileReaderProvider,
+                   FileWriterProvider fileWriterProvider,
+                   const uint64_t maxHeapSize)
+{
+  const std::function<std::optional<std::tuple<std::string, std::string>>()> mergeFileFetcher =
+  [inputFiles, mutex]()
+  {
+    std::optional<MergeFilePair> res = std::nullopt;
+    if(inputFiles->size() >= 2)
+    {
+    // Read-write the input-file queue in a critical section
+      std::unique_lock<std::mutex> lock(*mutex);
+      std::string f1 = inputFiles->front();
+      inputFiles->pop();
+      std::string f2 = inputFiles->front();
+      inputFiles->pop();
+
+      res = std::make_tuple(f1, f2);
+    }
+
+    return res;
+  };
+
+  MergeNotificationHandler mergeNotificationHandler =
+  [inputFiles, mutex](const std::string& f1, const std::string& f2, const std::string& outFile)
+  {
+    //.csv files are intermediate files, delete them after merge
+    if(f1.substr(f1.find_first_of(".")).compare(".csv") == 0)
+    {
+      std::remove(f1.c_str());
+    }
+
+    //.csv files are intermediate files, delete them after merge
+    if(f2.substr(f2.find_first_of(".")).compare(".csv") == 0)
+    {
+      std::remove(f2.c_str());
+    }
+
+    // Read-write the input-file queue in a critical section
+    std::unique_lock<std::mutex> lock(*mutex);
+    inputFiles->push(outFile);
+  };
+
+  std::function<uint32_t()> fetchNumRemainingFiles =
+  [inputFiles, mutex]()
+  {
+    // Read-write the input queue in a critical section
+    std::unique_lock<std::mutex> lock(*mutex);
+    return inputFiles->size();
+  };
+
+  while(fetchNumRemainingFiles() >= 2)
+  {
+    mergeFiles(mergeFileFetcher, fileReaderProvider, fileWriterProvider, mergeNotificationHandler, maxHeapSize);
+  }
+}
+
+void entryPoint(uint8_t numThreads,
+    uint64_t maxHeapSize,
+    std::shared_ptr<std::queue<std::string>> remainingFiles,
+    std::shared_ptr<std::mutex> mutex,
+    FileReaderProvider frp,
+    FileWriterProvider fwp)
+{
+  std::thread* threads[8];
+
+  // 1 thread is this thread so, numThreads - 1
+  for (uint8_t i = 0; i < numThreads - 1; i++)
+  {
+    threads[i] = new std::thread([remainingFiles, mutex, frp, fwp, maxHeapSize, numThreads](){ mergeAllFiles(remainingFiles, mutex, frp, fwp, maxHeapSize/numThreads);});
+  }
+
+  mergeAllFiles(remainingFiles, mutex, frp, fwp, maxHeapSize/numThreads);
+
+  for (uint8_t i = 0; i < numThreads - 1; i++)
+  {
+    threads[i]->join();
+  }
+
+  for (uint8_t i = 0; i < numThreads - 1; i++)
+  {
+    delete threads[i];
+  }
+
+  std::rename(remainingFiles->front().c_str(), "MultiplexedFile.txt");
+}
+

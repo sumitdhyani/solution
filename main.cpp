@@ -4,6 +4,55 @@
 #include <filesystem>
 #include "Solution.h"
 
+FileLineReader getFileLineReader(const std::string& filename)
+{
+  auto fileHandle = std::make_shared<std::ifstream>(filename, std::ifstream::in);
+  FileLineReader flr =
+  [fileHandle]
+  (char *buff)
+  {
+    uint8_t ret = 0;
+    if (nullptr == buff)
+    {
+      fileHandle->close();
+    }
+    else if(fileHandle->is_open() &&
+            fileHandle->getline(buff, 256); buff[0] != '\0')
+    {
+      if (memcmp(buff, "Symbol", strlen("Symbol")) == 0 ||
+          memcmp(buff, "Timestamp", strlen("Timestamp")) == 0)
+      {
+        fileHandle->getline(buff, 256);
+      }
+
+      uint8_t len = strlen(buff);
+      if (len > 0)
+      {
+        buff[len] = '\n';
+        ret = len + 1;
+      }
+    }
+
+    return ret;
+  };
+
+  return flr;
+}
+
+FileWriter getFileWriter(const std::string& filename)
+{
+  auto fileHandle = std::make_shared<std::ofstream>(filename, std::ofstream::out);
+  FileWriter fw =
+  [fileHandle]
+  (const char* buff, const uint32_t len)
+  {
+    fileHandle->write(buff, len);
+  };
+
+  return fw;
+}
+
+
 int main(int argc, char** argv)
 {
   if (argc < 5)
@@ -31,7 +80,7 @@ int main(int argc, char** argv)
     inputFiles->push(argv[i]);
   }
 
-  entryPoint(numThreads, maxAllowedMemory, inputFiles, mutex, mergeFiles, getFileLineReader, getFileWriter);
+  entryPoint(numThreads, maxAllowedMemory, inputFiles, mutex, getFileLineReader, getFileWriter);
   
   return 0;
 }

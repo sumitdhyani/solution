@@ -70,7 +70,6 @@ int main()
              1024,
              inputFiles,
              std::make_shared<std::mutex>(),
-             mergeFiles,
              fileReaderProvider,
              fileWriterProvider);
 

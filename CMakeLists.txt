@@ -14,8 +14,8 @@ endif()
 
 
 project(Solution)
-add_executable(Solution Solution.cpp main.cpp)
-add_library(libSolution STATIC Solution.cpp)
+add_executable(Solution MDEntry.cpp Solution.cpp main.cpp)
+add_library(libSolution STATIC Solution.cpp MDEntry.cpp)
 
 add_subdirectory("UnitTests")
 

@@ -73,7 +73,6 @@ int main()
              1024,
              inputFiles,
              std::make_shared<std::mutex>(),
-             mergeFiles,
              fileReaderProvider,
              fileWriterProvider);
 
@@ -82,7 +81,7 @@ int main()
   "MSFT, " + mockEntry_MSFT[0] + "\n" +
   "CSCO, " + mockEntry_CSCO + "\n" + 
   "MSFT, " + mockEntry_MSFT[1] + "\n";
-  
+
   std::cout << "Contents of outfile:" << std::endl;
   std::cout << std::string(outBuffer, totalLen);
   
