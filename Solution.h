@@ -66,7 +66,7 @@ typedef std::tuple<std::string, std::string> MergeFilePair;
  * One can easily pass mock IO interfaces to this method for the purpose of Unit Testing
  *
  * @param  numThreads               Max no. of threads used to merge the files
- * @param  maxHeapSize              Max memory in GB to allocated to hold intermediate results
+ * @param  maxHeapSize              Max memory in bytes to allocated to hold intermediate results
  * @param  filesToMerge             A input queue containing the files to be merged
  * @param  fileMerger               A FileMerger(explained above)
  * @param  fileReaderProvider       A FileReaderProvider(explained above)
