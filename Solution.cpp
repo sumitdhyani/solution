@@ -317,5 +317,6 @@ void entryPoint(uint8_t numThreads,
 
   // Rename the last file to MultiplexedFile.txt as this is the final file
   std::rename(remainingFiles->front().c_str(), "MultiplexedFile.txt");
+  remainingFiles->front() = "MultiplexedFile.txt";
 }
 

@@ -53,6 +53,8 @@ TEST_F(NegativeCaseTests, MergingEmptyFiles)
 
   ASSERT_EQ(totalLen, expected.length());
   ASSERT_EQ(0, memcmp(outBuffer, expected.c_str(), expected.length()));
+  EXPECT_EQ(inputFiles->size(), 1);
+  EXPECT_EQ(inputFiles->front().compare("MultiplexedFile.txt"), 0);
 }
 
 TEST_F(NegativeCaseTests, UnequalSizedFiles)
@@ -123,4 +125,6 @@ TEST_F(NegativeCaseTests, UnequalSizedFiles)
 
   assert(totalLen == expected.length());
   assert(0 == memcmp(outBuffer, expected.c_str(), expected.length()));
+  EXPECT_EQ(inputFiles->size(), 1);
+  EXPECT_EQ(inputFiles->front().compare("MultiplexedFile.txt"), 0);
 }

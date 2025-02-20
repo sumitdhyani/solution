@@ -95,6 +95,8 @@ TEST_F(PositiveCaseTests, UnequalSizedFiles) {
   
   EXPECT_EQ(totalLen, expected.length());
   EXPECT_EQ(memcmp(outBuffer, expected.c_str(), totalLen), 0);
+  EXPECT_EQ(inputFiles->size(), 1);
+  EXPECT_EQ(inputFiles->front().compare("MultiplexedFile.txt"), 0);
 }
 
 TEST_F(PositiveCaseTests, SortAlphabeticallyIfTimestampEqual)
@@ -259,4 +261,6 @@ TEST_F(PositiveCaseTests, SortByTimestamp)
   
   assert(totalLen == expected.length());
   assert(memcmp(outBuffer, expected.c_str(), totalLen) == 0);
+  EXPECT_EQ(inputFiles->size(), 1);
+  EXPECT_EQ(inputFiles->front().compare("MultiplexedFile.txt"), 0);
 }
