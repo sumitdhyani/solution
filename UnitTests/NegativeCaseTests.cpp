@@ -61,8 +61,8 @@ TEST_F(NegativeCaseTests, MergingEmptyFiles)
 
 TEST_F(NegativeCaseTests, UnequalSizedFiles)
 {
-  const char* header = "Symbol, Timestamp, Price, Size, Exchange, Type";
-  const char* mockEntry = "2021-03-05 10:00:00.123, 228.5, 120, NYSE, Ask";
+  const char* header = "Symbol, Timestamp, Price, Size, Exchange, Type\n";
+  const char* mockEntry = "2021-03-05 10:00:00.123, 228.5, 120, NYSE, Ask\n";
   bool firstLine = true;
   FileReaderProvider fileReaderProvider =
   [mockEntry, &firstLine](const std::string& file)
@@ -83,8 +83,7 @@ TEST_F(NegativeCaseTests, UnequalSizedFiles)
         if (firstLine)
         {
           memcpy(buff, mockEntry, strlen(mockEntry));
-          buff[strlen(mockEntry)] = '\n';
-          ret = strlen(mockEntry) + 1;
+          ret = strlen(mockEntry);
           firstLine = false;
         }
 
@@ -119,8 +118,7 @@ TEST_F(NegativeCaseTests, UnequalSizedFiles)
              fileWriterProvider);
 
   std::string expected = 
-  std::string(header) + "\n"+
-  "MSFT, " + mockEntry + "\n";
+  std::string(header) +  "MSFT, " + mockEntry;
 
   std::cout << "Contents of outfile:" << std::endl;
   std::cout << std::string(outBuffer, totalLen);

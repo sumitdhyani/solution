@@ -36,5 +36,17 @@ mkdir build; cd build; cmake .. _DCMAKE_BUILD_TYPE=Debug; make
   The IO interface to read/write files has been abstracted inside std::function objects. The entry point of the application is the "entryPoint" method.
   The production implementation and unit tests should pass IO interfaces to this method to provide an actual or mock interfaces.
 
-  Futher granular details can be found in code comments once yo uwalk though the code.
-  As far as the core algorithm is concerned, it used the "merge" step of merge sort alogorithm to generate intermediate files which are then merged with other intermediate and input files until only 1 file remains which is theresult file: "MultiplexedFile.txt"
+  Futher granular details can be found in code comments once you uwalk though the code.
+
+# Solution approach
+  As far as the core algorithm is concerned, it uses the "merge" step of merge sort alogorithm to generate intermediate files which are then merged with other intermediate and input files until only 1 file remains which is there sult file: "MultiplexedFile.txt".
+  
+  For exapmple, if there are 3 input files, the input queue will be: {"symbol1.txt", "symbol2.txt", "symbol3.txt"}. Then it will:
+  1. Merge "symbol1.txt" and "symbol2.txt" to create a temporary file with a random name, let's call it "temp.txt".
+  2. Then it will pop "symbol1.txt" and "symbol2.txt" and push "temp2.txt" from the input queue so that input queue becomes {"temp.txt", "symbol3.txt"}
+  3. It then runs step 1-2 on input queue again and so that "temp.txt" and "symbol3.txt" are popped and their merge file, "temp2.txt" is the only file ib the input queue, and this is the time when the algorithm exits as this files is the multiplexed file, before exiting, this file is renamed as "MultiplxedFile.txt"
+
+  ## Parallel processing
+  This algorithm is run in multiple threads to speed up the process, resources like memory and open files are equally distributed among all the threads.
+
+  The input queue mentioned above is shared by all the threads so each thread access the queue in a critical section
