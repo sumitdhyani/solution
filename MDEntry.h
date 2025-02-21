@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+// Memory map of timestamp
 struct MDTimeStamp
 {
   
@@ -36,6 +37,7 @@ struct MDTimeStamp
   const char* m_ms;
 };
 
+// Memory map of md entry
 class MDEntrry
 {
 
@@ -48,5 +50,6 @@ class MDEntrry
 
   private:
   MDTimeStamp m_timestamp;
+  // Raw string representing a line in the files
   const char* m_raw;
 };
