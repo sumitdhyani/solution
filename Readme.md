@@ -29,10 +29,12 @@ mkdir build; cd build; cmake .. _DCMAKE_BUILD_TYPE=Debug; make
   2. All the filenames provided in the commandline are valid files
      if a wrong filename is provided, results are undefined
   3. The format of the input files will not be validated, it is expected the format will be correct. Wrong behavior will result in undefined behavior
-
+  4. There should be atleast 2 files passed as input arguments 
+   
 # Code implementation style overview:
   The implementation used higher order functions generously(using std::function)
   The IO interface to read/write files has been abstracted inside std::function objects. The entry point of the application is the "entryPoint" method.
   The production implementation and unit tests should pass IO interfaces to this method to provide an actual or mock interfaces.
 
   Futher granular details can be found in code comments once yo uwalk though the code.
+  As far as the core algorithm is concerned, it used the "merge" step of merge sort alogorithm to generate intermediate files which are then merged with other intermediate and input files until only 1 file remains which is theresult file: "MultiplexedFile.txt"

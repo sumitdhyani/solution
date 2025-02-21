@@ -3,6 +3,8 @@
 #include <iostream>
 #include <Solution.h>
 
+// In all the test cases, outBuffer is the
+// buffer that cotains the contents of the out file
 class PositiveCaseTests : public ::testing::Test {
     virtual void SetUp() override        
     {}
