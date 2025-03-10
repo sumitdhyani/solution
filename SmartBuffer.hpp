@@ -44,10 +44,6 @@ struct SmartBuffer
                      const DataSourcer& dataSourcer,
                      const char ender)
   {
-    if (0 == occupiedBytes())
-    {
-      paste(dataSourcer);
-    }
     uint32_t ret = 0;
     uint32_t offset = 0;
     uint32_t occBytes = occupiedBytes();
@@ -63,7 +59,7 @@ struct SmartBuffer
       {
         return readUntil(out, dataSourcer, ender);
       }
-      else// EOF reached
+      else if(occupiedBytes() > 0)// EOF reached ans ther's stil some data in the buffer
       {
         copy(out, offset+1);
         ret = offset+1;
@@ -87,11 +83,16 @@ struct SmartBuffer
 
   void copy(char* out, const uint32_t len)
   {
+    if (!len)
+    {
+        return;
+    }
+
     if (m_tail < m_head || 
         len <= (m_end - m_tail + 1))
     {
       memcpy(out, m_ptr + m_tail, len);
-      m_tail += len;
+      m_tail = (m_tail + len) % m_size;
     }
     else
     {
@@ -130,7 +131,11 @@ struct SmartBuffer
       }
     }
     
-    m_lastOperation = LastOperation::PASTE;
+    if (bytesReadFromSourcer)
+    {
+        m_lastOperation = LastOperation::PASTE;
+    }
+
     return bytesReadFromSourcer;
   }
 
