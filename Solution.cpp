@@ -90,6 +90,8 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
   auto const& [fn1, fn2] = fileNames.value();
   std::string symbol1 = "";
   std::string symbol2 = "";
+  symbol1.reserve(fn1.length() + 1);
+  symbol2.reserve(fn2.length() + 1);
 
   if (std::size_t pos = fn1.find_first_of("."); 
       strcmp(".csv", fn1.c_str() + pos) != 0
@@ -118,7 +120,7 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
 
   uint32_t nl1 = readNextLine(fileReader1, l1, symbol1);
   uint32_t nl2 = readNextLine(fileReader2, l2, symbol2);
-  std::string outFile = generateRandomString(20) + ".csv";
+  std::string outFile = generateRandomString(20) + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())) + ".csv";
   auto fileWriter = fileWriterProvider(outFile);
 
   const char* str = "Symbol, Timestamp, Price, Size, Exchange, Type\n";
@@ -182,16 +184,18 @@ void mergeAllFiles(std::shared_ptr<std::queue<std::string>> inputFiles,
   [inputFiles, mutex]()
   {
     std::optional<MergeFilePair> res = std::nullopt;
-    std::unique_lock<std::mutex> lock(*mutex);
-    if(inputFiles->size() >= 2)
     {
-      // Read-write the input-file queue in a critical section
-      std::string f1(std::move(inputFiles->front()));
-      inputFiles->pop();
-      std::string f2(std::move(inputFiles->front()));
-      inputFiles->pop();
+      std::unique_lock<std::mutex> lock(*mutex);
+      if(inputFiles->size() >= 2)
+      {
+        // Read-write the input-file queue in a critical section
+        std::string f1 = inputFiles->front();
+        inputFiles->pop();
+        std::string f2 = inputFiles->front();
+        inputFiles->pop();
 
-      res = std::make_tuple(f1, f2);
+        res = std::make_tuple(f1, f2);
+      }
     }
 
     return res;

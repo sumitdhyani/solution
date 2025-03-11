@@ -42,16 +42,10 @@ FileLineReader getFileLineReader(const std::string& filename, const uint32_t max
 FileWriter getFileWriter(const std::string& filename)
 {
   auto fileHandle = std::make_shared<std::ofstream>(filename, std::ofstream::out);
-  //std::cout << "Fetching filewriter for " << filename << std::endl;
   FileWriter fw =
   [fileHandle, filename] 
   (const char* buff, const uint32_t len)
   {
-    if (memcmp(buff, "Symbol", strlen("Symbol")) != 0)
-    {
-      std::cout << "Erraneous write, file : " << filename << ", length: " << len << ", buffer: " << std::string(buff, len) << std::endl;
-    }
-
     fileHandle->write(buff, len);
   };
 
@@ -90,21 +84,3 @@ int main(int argc, char** argv)
   
   return 0;
 }
-
-// int main(int argc, char** argv)
-// {
-//   auto flr = getFileLineReader(argv[1], 75);
-//   char buff[256];
-//   uint32_t len = 0;
-//   uint32_t total = 0;
-//   uint32_t i = 0;
-//   for (len = flr(buff);len; len = flr(buff))
-//   {
-//     ++i;
-//     total += len;
-//     std::cout << std::string(buff, len);
-//   }
-
-//   //std::cout << i << std::endl;
-//   return 0;
-// }
