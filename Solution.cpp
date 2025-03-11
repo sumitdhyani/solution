@@ -70,10 +70,10 @@ std::string generateRandomString(const int len) {
   return res;
 }
 
-bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetcher, 
-                const FileReaderProvider fileReaderProvider,
-                const FileWriterProvider fileWriterProvider,
-                const MergeNotificationHandler outFileNotifier,
+bool mergeFiles(const std::function<std::optional<MergeFilePair>()>& filenameFetcher, 
+                const FileReaderProvider& fileReaderProvider,
+                const FileWriterProvider& fileWriterProvider,
+                const MergeNotificationHandler& outFileNotifier,
                 const uint64_t maxHeapSize)
 {
   // Allocate in big chunks instead of allocaing 
@@ -174,10 +174,10 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
  * @param  maxHeapSize              Max memory the thread in which it runs can allocate
  *                                  to hold intermediate resuts, before they ae written to an outfile
 */
-void mergeAllFiles(std::shared_ptr<std::queue<std::string>> inputFiles,
-                   std::shared_ptr<std::mutex> mutex,
-                   FileReaderProvider fileReaderProvider,
-                   FileWriterProvider fileWriterProvider,
+void mergeAllFiles(const std::shared_ptr<std::queue<std::string>>& inputFiles,
+                   const std::shared_ptr<std::mutex>& mutex,
+                   const FileReaderProvider& fileReaderProvider,
+                   const FileWriterProvider& fileWriterProvider,
                    const uint64_t maxHeapSize)
 {
   const std::function<std::optional<std::tuple<std::string, std::string>>()> mergeFileFetcher =
@@ -224,12 +224,12 @@ void mergeAllFiles(std::shared_ptr<std::queue<std::string>> inputFiles,
   while(mergeFiles(mergeFileFetcher, fileReaderProvider, fileWriterProvider, mergeNotificationHandler, maxHeapSize));
 }
 
-void entryPoint(uint8_t numThreads,
-    uint64_t maxHeapSize,
-    std::shared_ptr<std::queue<std::string>> remainingFiles,
-    std::shared_ptr<std::mutex> mutex,
-    FileReaderProvider frp,
-    FileWriterProvider fwp)
+void entryPoint(const uint8_t numThreads,
+    const uint64_t maxHeapSize,
+    const std::shared_ptr<std::queue<std::string>>& remainingFiles,
+    const std::shared_ptr<std::mutex>& mutex,
+    const FileReaderProvider& frp,
+    const FileWriterProvider& fwp)
 {
   std::thread* threads = numThreads > 1 ? new std::thread[numThreads-1] : nullptr;
 

@@ -21,7 +21,7 @@
  *                Pass it as 0 to close the file.
  * @return        No. of bytes read in this read operation
 */
-typedef std::function<uint8_t(char* buff)> FileLineReader;
+typedef std::function<uint32_t(char* buff)> FileLineReader;
 
 
 /**
@@ -72,9 +72,9 @@ typedef std::tuple<std::string, std::string> MergeFilePair;
  * @param  fileReaderProvider       A FileReaderProvider(explained above)
  * @param  fileWriterProvider       A FileWriterProvider(explained above)
 */
-void entryPoint(uint8_t numThreads,
-                uint64_t maxHeapSize,
-                std::shared_ptr<std::queue<std::string>> filesToMerge,
-                std::shared_ptr<std::mutex> mutex,
-                FileReaderProvider fileReaderProvider,
-                FileWriterProvider fileWriterProvider);
+void entryPoint(const uint8_t numThreads,
+                const uint64_t maxHeapSize,
+                const std::shared_ptr<std::queue<std::string>>& filesToMerge,
+                const std::shared_ptr<std::mutex>& mutex,
+                const FileReaderProvider& fileReaderProvider,
+                const FileWriterProvider& fileWriterProvider);
