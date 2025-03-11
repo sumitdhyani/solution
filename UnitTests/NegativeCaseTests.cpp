@@ -18,7 +18,7 @@ TEST_F(NegativeCaseTests, MergingEmptyFiles)
   const char* header = "Symbol, Timestamp, Price, Size, Exchange, Type";
 
   FileReaderProvider fileReaderProvider =
-  [](const std::string&)
+  [](const std::string&, const uint32_t)
   {
     return [](char* buff)
     {
@@ -65,7 +65,7 @@ TEST_F(NegativeCaseTests, UnequalSizedFiles)
   const char* mockEntry = "2021-03-05 10:00:00.123, 228.5, 120, NYSE, Ask\n";
   bool firstLine = true;
   FileReaderProvider fileReaderProvider =
-  [mockEntry, &firstLine](const std::string& file)
+  [mockEntry, &firstLine](const std::string& file, const uint32_t)
   {
     FileLineReader flr;
     if (0 == file.compare("CSCO.txt"))

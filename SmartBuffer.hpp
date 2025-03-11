@@ -1,6 +1,6 @@
 #include <functional>
 
-struct SmartBuffer
+struct SyncIOBuffer
 {
   typedef std::function<uint32_t(char*, const uint32_t)> DataSourcer;
   enum class LastOperation
@@ -10,7 +10,7 @@ struct SmartBuffer
     NONE
   };
 
-  SmartBuffer(const uint32_t size) : 
+  SyncIOBuffer(const uint32_t size) : 
     m_tail(0),
     m_head(0),
     m_end(size - 1),
@@ -54,17 +54,19 @@ struct SmartBuffer
     // Didn't find the ender
     if ((m_tail + offset) % m_size == m_head)
     {
+      // Source the data from IO Interface
       if(uint32_t bytesPasted = paste(dataSourcer);
-         bytesPasted > 0)//Non-zero no. of bytes read
+         bytesPasted > 0)// Non-zero no. of bytes read
       {
         return readUntil(out, dataSourcer, ender);
       }
-      else if(occupiedBytes() > 0)// EOF reached ans ther's stil some data in the buffer
+      else if(occupiedBytes() > 0)// EOF reached, but there's still some data in the buffer
       {
-        copy(out, offset+1);
-        ret = offset+1;
+        ret = occupiedBytes();
+        copy(out, ret);
       }
     }
+    // Found ender
     else
     {
       copy(out, offset+1);
@@ -74,7 +76,7 @@ struct SmartBuffer
     return ret;
   }
 
-  ~SmartBuffer()
+  ~SyncIOBuffer()
   {
     free(m_ptr);
   }

@@ -39,7 +39,7 @@ typedef std::function<void(const char* buff, const uint32_t len)> FileWriter;
  * @param  file   Name of the file to be read
  * @return        A "FileLineReader"
 */
-typedef std::function<FileLineReader(const std::string& file)> FileReaderProvider;
+typedef std::function<FileLineReader(const std::string& file, const uint32_t maxBuffSize)> FileReaderProvider;
 
 /**
  * An interface to provide a FileWriter(explained above), given an input filename.

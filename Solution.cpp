@@ -31,17 +31,27 @@ uint32_t readNextLine(const FileLineReader& reader,
                       const std::string& symbol)
 {
   
-  uint8_t offSet = 0;
-  if (symbol.length() != 0)
+  uint32_t ret = 0;
+
+  uint32_t offSet = symbol.length() ? symbol.length() + 2 : 0;
+  char* fileBuff = buff + offSet;
+  if (uint32_t bytesReadFromFile = reader(fileBuff); bytesReadFromFile)
   {
-    memcpy(buff, symbol.c_str(), symbol.length());
-    memcpy(buff + symbol.length(), ", ", 2);
-    offSet = symbol.length() + 2;
-    buff += offSet;
+    ret = offSet + bytesReadFromFile;
+    if (fileBuff[bytesReadFromFile - 1] != '\n')// EOF was reached
+    {
+      fileBuff[bytesReadFromFile] = '\n';
+      ++ret;
+    }
+
+    if (offSet)
+    {
+      memcpy(buff, symbol.c_str(), symbol.length());
+      memcpy(buff + symbol.length(), ", ", 2);
+    }
   }
 
-  uint32_t bytesReadFromFile = reader(buff);
-  return bytesReadFromFile? bytesReadFromFile + offSet : 0;
+  return ret;
 }
 
 // Get the filename for intermediate files
@@ -71,8 +81,6 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
   // improve performance
   // 
   // "buff" is the buffer that holds the intermidate result of the merge
-  char* buff = reinterpret_cast<char*>(malloc(maxHeapSize));
-  uint64_t bytesRemaining  = maxHeapSize;
   auto fileNames = filenameFetcher();
   if (!fileNames)
   {
@@ -82,12 +90,6 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
   auto const& [fn1, fn2] = fileNames.value();
   std::string symbol1 = "";
   std::string symbol2 = "";
-  symbol1.reserve(fn1.length() + 1);
-  symbol2.reserve(fn2.length() + 1);
-
-  bool f1IsIntermediateFile = false;
-  bool f2IsIntermediateFile = false;
-
 
   if (std::size_t pos = fn1.find_first_of("."); 
       strcmp(".csv", fn1.c_str() + pos) != 0
@@ -103,14 +105,17 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
     symbol2 = std::move(fn2.substr(0, pos));
   }
 
-  auto fileReader1 = fileReaderProvider(fn1);
-  auto fileReader2 = fileReaderProvider(fn2);
+  auto fileReader1 = fileReaderProvider(fn1, maxHeapSize/2);
+  auto fileReader2 = fileReaderProvider(fn2, maxHeapSize/2);
 
   //Lines read from each of the files
   char l1[256];
   char l2[256];
 
   // Bytes in the curr line in each file
+  readNextLine(fileReader1, l1, symbol1);
+  readNextLine(fileReader2, l2, symbol2);
+
   uint32_t nl1 = readNextLine(fileReader1, l1, symbol1);
   uint32_t nl2 = readNextLine(fileReader2, l2, symbol2);
   std::string outFile = generateRandomString(20) + ".csv";
@@ -121,7 +126,6 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
 
   // Just like the "merge" step of merge sort, keep picking the
   // "lesser" fron element until EOF is obtained in one of the files
-  char* curr = buff;
   while (nl1 && nl2)
   {
     MDEntrry md1(reinterpret_cast<const char*>(l1));
@@ -129,88 +133,27 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()> filenameFetc
 
     if (md1 <=> md2 < 0)
     {
-      if(bytesRemaining < nl1)
-      {
-        fileWriter(buff, curr - buff);
-        curr = buff;
-        bytesRemaining = maxHeapSize;
-      }
-
-      memcpy(curr, l1, nl1);
-      curr += nl1;
-      bytesRemaining -= nl1;
+      fileWriter(l1, nl1);
       nl1 = readNextLine(fileReader1, l1, symbol1);
     }
     else
     {
-      if(bytesRemaining < nl2)
-      {
-        fileWriter(buff, curr - buff);
-        curr = buff;
-        bytesRemaining = maxHeapSize;
-      }
-
-      memcpy(curr, l2, nl2);
-      curr += nl2;
-      bytesRemaining -= nl2;
+      fileWriter(l2, nl2);
       nl2 = readNextLine(fileReader2, l2, symbol2);
     }
   }
 
-  if (curr > buff)
+  while (nl1)
   {
-    fileWriter(buff, curr - buff);
+    fileWriter(l1, nl1);
+    nl1 = readNextLine(fileReader1, l1, symbol1);
   }
 
-  curr = buff;
-  bytesRemaining = maxHeapSize;
-
-  if (!nl1)
+  while (nl2)
   {
-    while (nl2 != 0)
-    {
-      if(bytesRemaining < nl2)
-      {
-        fileWriter(buff, curr - buff);
-        curr = buff;
-        bytesRemaining = maxHeapSize;
-      }
-
-      memcpy(curr, l2, nl2);
-      curr += nl2;
-      bytesRemaining -= nl2;
-      nl2 = readNextLine(fileReader2, l2, symbol2);
-    }
+    fileWriter(l2, nl2);
+    nl2 = readNextLine(fileReader2, l2, symbol2);
   }
-
-  if (!nl2)
-  {
-    while (nl1 != 0)
-    {
-      if(bytesRemaining < nl1)
-      {
-        fileWriter(buff, curr - buff);
-        curr = buff;
-        bytesRemaining = maxHeapSize;
-      }
-
-      memcpy(curr, l1, nl1);
-      curr += nl1;
-      bytesRemaining -= nl1;
-      nl1 = readNextLine(fileReader1, l1, symbol1);
-    }
-  }
-
-  if (curr > buff)
-  {
-    fileWriter(buff, curr - buff);
-  }
-
-  free(buff);
-
-  // Close the file handles
-  fileReader1(nullptr);
-  fileReader2(nullptr);
 
   // Notify the merge just happenned
   outFileNotifier(fn1, fn2, outFile);
@@ -239,13 +182,13 @@ void mergeAllFiles(std::shared_ptr<std::queue<std::string>> inputFiles,
   [inputFiles, mutex]()
   {
     std::optional<MergeFilePair> res = std::nullopt;
+    std::unique_lock<std::mutex> lock(*mutex);
     if(inputFiles->size() >= 2)
     {
-    // Read-write the input-file queue in a critical section
-      std::unique_lock<std::mutex> lock(*mutex);
-      std::string f1 = inputFiles->front();
+      // Read-write the input-file queue in a critical section
+      std::string f1(std::move(inputFiles->front()));
       inputFiles->pop();
-      std::string f2 = inputFiles->front();
+      std::string f2(std::move(inputFiles->front()));
       inputFiles->pop();
 
       res = std::make_tuple(f1, f2);
@@ -274,18 +217,7 @@ void mergeAllFiles(std::shared_ptr<std::queue<std::string>> inputFiles,
     inputFiles->push(outFile);
   };
 
-  std::function<uint32_t()> fetchNumRemainingFiles =
-  [inputFiles, mutex]()
-  {
-    // Read-write the input queue in a critical section
-    std::unique_lock<std::mutex> lock(*mutex);
-    return inputFiles->size();
-  };
-
-  while(fetchNumRemainingFiles() >= 2)
-  {
-    mergeFiles(mergeFileFetcher, fileReaderProvider, fileWriterProvider, mergeNotificationHandler, maxHeapSize);
-  }
+  while(mergeFiles(mergeFileFetcher, fileReaderProvider, fileWriterProvider, mergeNotificationHandler, maxHeapSize));
 }
 
 void entryPoint(uint8_t numThreads,
@@ -295,24 +227,24 @@ void entryPoint(uint8_t numThreads,
     FileReaderProvider frp,
     FileWriterProvider fwp)
 {
-  std::thread* threads[8];
+  std::thread* threads = numThreads > 1 ? new std::thread[numThreads-1] : nullptr;
 
   // 1 thread is this thread so, numThreads - 1
   for (uint8_t i = 0; i < numThreads - 1; i++)
   {
-    threads[i] = new std::thread([remainingFiles, mutex, frp, fwp, maxHeapSize, numThreads](){ mergeAllFiles(remainingFiles, mutex, frp, fwp, maxHeapSize/numThreads);});
+    threads[i] = std::thread([remainingFiles, mutex, frp, fwp, maxHeapSize, numThreads](){ mergeAllFiles(remainingFiles, mutex, frp, fwp, maxHeapSize/numThreads);});
   }
 
   mergeAllFiles(remainingFiles, mutex, frp, fwp, maxHeapSize/numThreads);
 
   for (uint8_t i = 0; i < numThreads - 1; i++)
   {
-    threads[i]->join();
+    threads[i].join();
   }
 
-  for (uint8_t i = 0; i < numThreads - 1; i++)
+  if (threads)
   {
-    delete threads[i];
+    delete[] threads;
   }
 
   // Rename the last file to MultiplexedFile.txt as this is the final file

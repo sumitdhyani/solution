@@ -1,49 +1,39 @@
 #include <iostream>
 #include <fstream>
+#include <tuple>
 #include <string.h>
 #include <filesystem>
 #include "Solution.h"
+#include "SmartBuffer.hpp"
 
-FileLineReader getFileLineReader(const std::string& filename)
+
+// Assumption: maxBuffSize > max length of a line
+FileLineReader getFileLineReader(const std::string& filename, const uint32_t maxBuffSize)
 {
   auto fileHandle = std::make_shared<std::ifstream>(filename, std::ifstream::in);
-  FileLineReader flr =
-  [fileHandle]
-  (char *buff)
+  auto smartBuffer = std::make_shared<SyncIOBuffer>(maxBuffSize);  
+  
+  FileLineReader flr = 
+  [fileHandle, smartBuffer](char* out)
   {
-    uint8_t ret = 0;
-    if (nullptr == buff)
-    {
-      fileHandle->close();
-    }
-    else
-    {
-      char temp = buff[0];
-      if(fileHandle->is_open() &&
-              fileHandle->getline(buff, 256); buff[0] != '\0')
-      {
-        if (memcmp(buff, "Symbol", strlen("Symbol")) == 0 ||
-            memcmp(buff, "Timestamp", strlen("Timestamp")) == 0)
-        {
-          fileHandle->getline(buff, 256);
-        }
+    return
+    smartBuffer->readUntil(out, 
+                           [fileHandle](char* out, const uint32_t len) {
+                              uint32_t ret = 0;
+                              if (fileHandle->is_open() && len)
+                              {
+                                fileHandle->read(out, len);
+                                ret = fileHandle->gcount();
+                                if(!ret)
+                                {
+                                  fileHandle->close();
+                                }
+                              }
 
-        uint8_t len = strlen(buff);
-        if (len > 0)
-        {
-          buff[len] = '\n';
-          ret = len + 1;
-        }
-        else
-        {
-          // In case we reached EOF, buff[0] will be set to 0
-          // We need to restore the original state of the output buffer
-          buff[0] = temp;
-        }
-      }
-    }
-    
-    return ret;
+                              return ret;
+                           },
+                           '\n'
+    );
   };
 
   return flr;
@@ -52,10 +42,16 @@ FileLineReader getFileLineReader(const std::string& filename)
 FileWriter getFileWriter(const std::string& filename)
 {
   auto fileHandle = std::make_shared<std::ofstream>(filename, std::ofstream::out);
+  //std::cout << "Fetching filewriter for " << filename << std::endl;
   FileWriter fw =
-  [fileHandle]
+  [fileHandle, filename] 
   (const char* buff, const uint32_t len)
   {
+    if (memcmp(buff, "Symbol", strlen("Symbol")) != 0)
+    {
+      std::cout << "Erraneous write, file : " << filename << ", length: " << len << ", buffer: " << std::string(buff, len) << std::endl;
+    }
+
     fileHandle->write(buff, len);
   };
 
@@ -94,3 +90,21 @@ int main(int argc, char** argv)
   
   return 0;
 }
+
+// int main(int argc, char** argv)
+// {
+//   auto flr = getFileLineReader(argv[1], 75);
+//   char buff[256];
+//   uint32_t len = 0;
+//   uint32_t total = 0;
+//   uint32_t i = 0;
+//   for (len = flr(buff);len; len = flr(buff))
+//   {
+//     ++i;
+//     total += len;
+//     std::cout << std::string(buff, len);
+//   }
+
+//   //std::cout << i << std::endl;
+//   return 0;
+// }

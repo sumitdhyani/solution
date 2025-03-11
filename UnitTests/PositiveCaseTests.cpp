@@ -25,7 +25,7 @@ TEST_F(PositiveCaseTests, UnequalSizedFiles) {
   bool firstLine_CSCO = true;
   FileReaderProvider fileReaderProvider =
   [mockEntry_CSCO, &firstLine_CSCO, mockEntry_MSFT, &MSFTIndex]
-  (const std::string& file)
+  (const std::string& file, const uint32_t)
   {
     FileLineReader flr;
     if (0 == file.compare("CSCO.txt"))
@@ -110,7 +110,7 @@ TEST_F(PositiveCaseTests, SortAlphabeticallyIfTimestampEqual)
   bool firstLine_MSFT = true;
   FileReaderProvider fileReaderProvider =
   [mockEntry_CSCO, &firstLine_CSCO, mockEntry_MSFT, &firstLine_MSFT]
-  (const std::string& file)
+  (const std::string& file, const uint32_t)
   {
     FileLineReader flr;
     if (0 == file.compare("CSCO.txt"))
@@ -192,7 +192,7 @@ TEST_F(PositiveCaseTests, SortByTimestamp)
   bool firstLine_MSFT = true;
   FileReaderProvider fileReaderProvider =
   [mockEntry_CSCO, &firstLine_CSCO, mockEntry_MSFT, &firstLine_MSFT]
-  (const std::string& file)
+  (const std::string& file, const uint32_t)
   {
     FileLineReader flr;
     if (0 == file.compare("CSCO.txt"))
