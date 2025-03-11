@@ -28,12 +28,12 @@
 // of the symbol the input file is made for
 uint32_t readNextLine(const FileLineReader& reader,
                       char* buff,
-                      const std::string& symbol)
+                      const std::optional<std::string>& symbol)
 {
   
   uint32_t ret = 0;
 
-  uint32_t offSet = symbol.length() ? symbol.length() + 2 : 0;
+  uint32_t offSet = symbol ? symbol.value().length() + 2 : 0;
   char* fileBuff = buff + offSet;
   if (uint32_t bytesReadFromFile = reader(fileBuff); bytesReadFromFile)
   {
@@ -46,8 +46,8 @@ uint32_t readNextLine(const FileLineReader& reader,
 
     if (offSet)
     {
-      memcpy(buff, symbol.c_str(), symbol.length());
-      memcpy(buff + symbol.length(), ", ", 2);
+      memcpy(buff, symbol.value().c_str(), symbol.value().length());
+      memcpy(buff + symbol.value().length(), ", ", 2);
     }
   }
 
@@ -88,11 +88,9 @@ bool mergeFiles(const std::function<std::optional<MergeFilePair>()>& filenameFet
   }
 
   auto const& [fn1, fn2] = fileNames.value();
-  std::string symbol1 = "";
-  std::string symbol2 = "";
-  symbol1.reserve(fn1.length() + 1);
-  symbol2.reserve(fn2.length() + 1);
-
+  std::optional<std::string> symbol1 = std::nullopt;
+  std::optional<std::string> symbol2 = std::nullopt;
+  
   if (std::size_t pos = fn1.find_first_of("."); 
       strcmp(".csv", fn1.c_str() + pos) != 0
     )

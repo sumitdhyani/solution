@@ -15,5 +15,12 @@ project(Solution)
 add_executable(Solution MDEntry.cpp Solution.cpp main.cpp)
 add_library(SolutionLib STATIC Solution.cpp MDEntry.cpp)
 
+project(DefaultFileReader)
+add_executable(DefaultFileReader DefaultFileReader.cpp)
+
+project(SmartFileReader)
+add_executable(SmartFileReader SmartFileReader.cpp)
+
+
 add_subdirectory("UnitTests")
 
