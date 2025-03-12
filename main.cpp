@@ -11,7 +11,7 @@
 FileLineReader getFileLineReader(const std::string& filename, const uint32_t maxBuffSize)
 {
   auto fileHandle = std::make_shared<std::ifstream>(filename, std::ifstream::in);
-  auto smartBuffer = std::make_shared<SyncIOBuffer>(maxBuffSize);  
+  auto smartBuffer = std::make_shared<SyncIOReadBuffer>(maxBuffSize);  
   
   FileLineReader flr = 
   [fileHandle, smartBuffer](char* out)

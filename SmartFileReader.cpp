@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     return std::cin.gcount();
   };
 
-  SyncIOBuffer smartBuffer(atol(argv[2]));
+  SyncIOReadBuffer smartBuffer(atol(argv[2]));
 
   uint32_t numLines = 0;
   auto start = std::chrono::high_resolution_clock().now();

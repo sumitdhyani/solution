@@ -1,6 +1,6 @@
 #include <functional>
 
-struct SyncIOBuffer
+struct SyncIOReadBuffer
 {
   typedef std::function<uint32_t(char*, const uint32_t)> DataSourcer;
   enum class LastOperation
@@ -10,7 +10,7 @@ struct SyncIOBuffer
     NONE
   };
 
-  SyncIOBuffer(const uint32_t size) : 
+  SyncIOReadBuffer(const uint32_t size) : 
     m_tail(0),
     m_head(0),
     m_end(size - 1),
@@ -84,7 +84,7 @@ struct SyncIOBuffer
     return ret;
   }
 
-  ~SyncIOBuffer()
+  ~SyncIOReadBuffer()
   {
     free(m_ptr);
   }
