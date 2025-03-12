@@ -177,3 +177,124 @@ struct SyncIOReadBuffer
   const uint32_t m_size;
   char* m_ptr;
 };
+
+
+struct SyncIOLazyWriteBuffer
+{
+  typedef std::function<void(char*, const uint32_t)> DataWriter;
+  enum class LastOperation
+  {
+    FLUSH,
+    PUT,
+    NONE
+  };
+
+  SyncIOLazyWriteBuffer(const uint32_t size, const DataWriter& dataWriter) : 
+    m_outBuff(reinterpret_cast<char*>(malloc(size))),
+    m_tail(0),
+    m_head(0),
+    m_size(size),
+    m_dataWRiter(dataWriter),
+    m_lastOperation(LastOperation::NONE)
+  {
+  }
+
+  void write(const char* out, const uint32_t len)
+  {
+    uint32_t remainingLen = len;
+    while (freeBytes() < remainingLen)
+    {
+      uint32_t freeBytesBeforePut = freeBytes();
+      put(out, freeBytes());
+      remainingLen -= freeBytesBeforePut;
+      out += freeBytesBeforePut;
+      flush();
+    }
+
+    put(out, remainingLen);
+  }
+
+  ~SyncIOLazyWriteBuffer()
+  {
+    flush();
+    free(m_outBuff);
+  }
+
+  private:
+
+  // Call this only when freeBytes() <= len
+  void put(const char* outData, const uint32_t len)
+  {
+    if (!len)
+    {
+        return;
+    }
+
+    if (m_head < m_tail ||
+        len <= m_size - m_head)
+    {
+      memcpy(m_outBuff + m_head, outData, len);
+      m_head += len;
+    }
+    else
+    {
+      const uint32_t l1 = m_size - m_head;
+      const uint32_t l2 = len - l1;
+      memcpy(m_outBuff + m_head, outData, l1);
+      memcpy(m_outBuff, outData + l1, l2);
+      m_head = l2;
+    }
+
+    m_lastOperation = LastOperation::PUT;
+  }
+
+  // Should be called only when occupiedBytes() > 0
+  void flush()
+  {
+    if (!occupiedBytes())
+    {
+      return;
+    }
+
+    if (m_tail < m_head)
+    {
+      m_dataWRiter(m_outBuff + m_tail, occupiedBytes());
+    }
+    else
+    {
+      m_dataWRiter(m_outBuff + m_tail, m_size - m_tail);
+      m_dataWRiter(m_outBuff, m_head);
+    }
+
+    m_tail = m_head = 0;
+    m_lastOperation = LastOperation::FLUSH;
+  }
+  
+  uint32_t occupiedBytes()
+  {
+    if (m_tail == m_head)
+    {
+      return m_lastOperation == LastOperation::PUT? m_size : 0;
+    }
+    else if (m_tail < m_head)
+    {
+      return m_head - m_tail;
+    }
+    else
+    {
+      return m_size - (m_tail - m_head);
+    }
+  }
+
+  uint32_t freeBytes()
+  {
+    return m_size - occupiedBytes();
+  }
+
+  LastOperation m_lastOperation;
+  DataWriter m_dataWRiter;
+  uint32_t m_tail;
+  uint32_t m_head;
+  const uint32_t m_size;
+  char* m_outBuff;
+};
