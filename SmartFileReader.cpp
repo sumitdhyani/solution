@@ -56,7 +56,7 @@ int main(int argc, char** argv)
   char endingBuff[1024];
   char* currWriteHead = endingBuff;
   currWriteHead += sprintf((char*)currWriteHead, "\n\nNo. of lines read = %u\n", numLines);
-  currWriteHead += sprintf((char*)currWriteHead, "Reserved space = %s\n", argv[2]);
+  currWriteHead += sprintf((char*)currWriteHead, "Reserved space = %s\n", argv[1]);
   std::string durationStr = std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count()) + " ns"; 
   currWriteHead += sprintf((char*)currWriteHead, "Duration: %s", durationStr.c_str());
   smartWriteBuffer.write((const char*)endingBuff, currWriteHead - endingBuff + 1);
