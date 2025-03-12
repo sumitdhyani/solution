@@ -47,30 +47,38 @@ struct SyncIOBuffer
     uint32_t ret = 0;
     uint32_t offset = 0;
     uint32_t occBytes = occupiedBytes();
-    for (;
-         offset < occBytes && m_ptr[(m_tail + offset) % m_size] != ender;
-         ++offset);
-    
-    // Didn't find the ender
-    if ((m_tail + offset) % m_size == m_head)
+    if(!occBytes)
     {
-      // Source the data from IO Interface
-      if(uint32_t bytesPasted = paste(dataSourcer);
-         bytesPasted > 0)// Non-zero no. of bytes read
-      {
-        return readUntil(out, dataSourcer, ender);
-      }
-      else if(occupiedBytes() > 0)// EOF reached, but there's still some data in the buffer
-      {
-        ret = occupiedBytes();
-        copy(out, ret);
-      }
+      occBytes = paste(dataSourcer);
     }
-    // Found ender
-    else
+
+    if (occBytes)
     {
-      copy(out, offset+1);
-      ret = offset+1;
+      for (;
+          offset < occBytes && m_ptr[(m_tail + offset) % m_size] != ender;
+          ++offset);
+      
+      // Found ender
+      if (ender == m_ptr[(m_tail + offset) % m_size])
+      {
+        copy(out, offset+1);
+        ret = offset+1;
+      }
+      // Didn't find the ender
+      else
+      {
+        // Source the data from IO Interface
+        if(uint32_t bytesPasted = paste(dataSourcer);
+          bytesPasted > 0)// Non-zero no. of bytes read
+        {
+          ret = readUntil(out, dataSourcer, ender);
+        }
+        else// EOF reached, but there's still some data in the buffer
+        {
+          ret = occupiedBytes();
+          copy(out, ret);
+        }
+      }
     }
 
     return ret;

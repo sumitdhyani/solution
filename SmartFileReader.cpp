@@ -26,11 +26,20 @@ int main(int argc, char** argv)
     return ret;
   };
 
+  auto io_console = 
+  [](char* out, const uint32_t len)
+  {
+    std::ios_base:: sync_with_stdio(false);
+    std::cin.tie(NULL); std::cout.tie(NULL);
+    std::cin.read(out, len);
+    return std::cin.gcount();
+  };
+
   SyncIOBuffer smartBuffer(atol(argv[2]));
 
   uint32_t numLines = 0;
   auto start = std::chrono::high_resolution_clock().now();
-  while(smartBuffer.readUntil(line, io_file, '\n'))
+  while(smartBuffer.readUntil(line, io_console, '\n'))
   {
     ++numLines;
   }
