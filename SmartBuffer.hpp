@@ -228,7 +228,7 @@ struct SyncIOLazyWriteBuffer
   SyncIOLazyWriteBuffer& operator =(const SyncIOLazyWriteBuffer&) = delete;
   SyncIOLazyWriteBuffer(SyncIOLazyWriteBuffer&&) = delete;
   SyncIOLazyWriteBuffer& operator =(SyncIOLazyWriteBuffer&&) = delete;
-  
+
   private:
 
   // Call this only when freeBytes() <= len
@@ -312,6 +312,7 @@ struct SyncIOLazyWriteBuffer
 template <class ErrType>
 struct AsyncIOWriteBuffer
 {
+  using WriteCallback = std::function<void(const uint32_t)>;
   using ErrProcessor = std::function<void(const ErrType&)>;
   using WriteResutHandler = std::function<void(const uint32_t, const std::optional<ErrType>&)>;
   using DataWriter = std::function<void(const char*, const uint32_t, const WriteResutHandler&)>;
@@ -325,7 +326,9 @@ struct AsyncIOWriteBuffer
 
   AsyncIOWriteBuffer(const uint32_t size,
                      const DataWriter& dataWriter,
-                     const ErrProcessor& errProcessor) : 
+                     const ErrProcessor& errProcessor,
+                     const WriteCallback& writeCallback
+                     ) : 
     m_outBuff(reinterpret_cast<char*>(malloc(size))),
     m_tail(0),
     m_head(0),
@@ -333,6 +336,7 @@ struct AsyncIOWriteBuffer
     m_pendingWriteCompletions(0),
     m_interfaceInvalidated(false),
     m_dataWriter(dataWriter),
+    m_writeCallback(writeCallback),
     m_errProcessor(dataWriter),
     m_lastOperation(LastOperation::NONE)
   {
@@ -451,6 +455,7 @@ struct AsyncIOWriteBuffer
                    else
                    {
                     onWriteComplete();
+                    m_writeCallback(len);
                    }
                  });
   }
@@ -479,6 +484,7 @@ struct AsyncIOWriteBuffer
   LastOperation m_lastOperation;
   DataWriter m_dataWriter;
   ErrProcessor m_errProcessor;
+  WriteCallback m_writeCallback;
   uint32_t m_tail;
   uint32_t m_head;
   const uint32_t m_size;
