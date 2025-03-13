@@ -314,14 +314,14 @@ struct AsyncIOWriteBuffer
   };
 
   AsyncIOWriteBuffer(const uint32_t size,
-                         const DataWriter& dataWriter,
-                         const ErrProcessor& errProcessor) : 
+                     const DataWriter& dataWriter,
+                     const ErrProcessor& errProcessor) : 
     m_outBuff(reinterpret_cast<char*>(malloc(size))),
     m_tail(0),
     m_head(0),
     m_size(size),
     m_pendingWriteCompletions(0),
-    m_interfaceInvalidated(false);
+    m_interfaceInvalidated(false),
     m_dataWriter(dataWriter),
     m_errProcessor(dataWriter),
     m_lastOperation(LastOperation::NONE)
@@ -330,6 +330,11 @@ struct AsyncIOWriteBuffer
 
   void write(const char* out, const uint32_t len)
   {
+    if(m_interfaceInvalidated)
+    {
+      return;
+    }
+
     if (m_pendingWriteCompletions)
     {
       uint32_t remainingLen = len;
@@ -339,7 +344,6 @@ struct AsyncIOWriteBuffer
         put(out, freeBytes());
         remainingLen -= freeBytesBeforePut;
         out += freeBytesBeforePut;
-        ++m_pendingWriteCompletions;
         flush();
       }
 
@@ -347,18 +351,12 @@ struct AsyncIOWriteBuffer
     }
     else
     {
-      ++m_pendingWriteCompletions;
-      m_dataWriter(out,
-                   len,
-                   [this](const uint32_t len, const std::optional<ErrType>& err)
-                   { onWriteComplete(len, err); }
-      );
+      writeToInterface(out, len);
     }
   }
 
   ~AsyncIOWriteBuffer()
   {
-    flush();
     free(m_outBuff);
   }
 
@@ -405,21 +403,14 @@ struct AsyncIOWriteBuffer
       return;
     }
 
-    ++m_pendingWriteCompletions;
     if (m_tail < m_head)
     {
-      m_dataWriter(m_outBuff + m_tail,
-                   occupiedBytes(),
-                   [this](const uint32_t len, const std::optional<ErrType>& err)
-                   { onWriteComplete(len, err); });
+      writeToInterface(m_outBuff + m_tail, occupiedBytes());
       m_tail = m_head = 0;
     }
     else
     {
-      m_dataWriter(m_outBuff + m_tail,
-                   m_size - m_tail,
-                   [this](const uint32_t len, const std::optional<ErrType>& err)
-                   { onWriteComplete(len, err); });
+      writeToInterface(m_outBuff + m_tail, m_size - m_tail);
       m_tail = 0;
     }
 
@@ -428,17 +419,23 @@ struct AsyncIOWriteBuffer
 
   void writeToInterface(const char* out, const uint32_t len)
   {
+    ++m_pendingWriteCompletions;
     m_dataWriter(out,
                  len,
                  [this](const uint32_t len, const std::optional<ErrType>& err)
                  {
                    if (err)
                    {
-                     onWriteComplete();
+                    // Call errCallback only once
+                    m_interfaceInvalidated = true;
+                    if(!(--m_pendingWriteCompletions))
+                    {
+                      m_errProcessor(err);
+                    }
                    }
                    else
                    {
-                     m_errProcessor(err.value());
+                    onWriteComplete();
                    }
                  });
   }
