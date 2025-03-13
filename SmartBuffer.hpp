@@ -89,6 +89,11 @@ struct SyncIOReadBuffer
     free(m_ptr);
   }
 
+  SyncIOReadBuffer(const SyncIOReadBuffer&) = delete;
+  SyncIOReadBuffer& operator =(const SyncIOReadBuffer&) = delete;
+  SyncIOReadBuffer(SyncIOReadBuffer&&) = delete;
+  SyncIOReadBuffer& operator =(SyncIOReadBuffer&&) = delete;
+
   private:
 
   void copy(char* out, const uint32_t len)
@@ -219,6 +224,11 @@ struct SyncIOLazyWriteBuffer
     free(m_outBuff);
   }
 
+  SyncIOLazyWriteBuffer(const SyncIOLazyWriteBuffer&) = delete;
+  SyncIOLazyWriteBuffer& operator =(const SyncIOLazyWriteBuffer&) = delete;
+  SyncIOLazyWriteBuffer(SyncIOLazyWriteBuffer&&) = delete;
+  SyncIOLazyWriteBuffer& operator =(SyncIOLazyWriteBuffer&&) = delete;
+  
   private:
 
   // Call this only when freeBytes() <= len
@@ -359,6 +369,11 @@ struct AsyncIOWriteBuffer
   {
     free(m_outBuff);
   }
+
+  AsyncIOWriteBuffer(const AsyncIOWriteBuffer&) = delete;
+  AsyncIOWriteBuffer& operator =(const AsyncIOWriteBuffer&) = delete;
+  AsyncIOWriteBuffer(AsyncIOWriteBuffer&&) = delete;
+  AsyncIOWriteBuffer& operator =(AsyncIOWriteBuffer&&) = delete;
 
   private:
 
