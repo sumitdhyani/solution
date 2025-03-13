@@ -1,5 +1,5 @@
 #include <functional>
-
+#include <string.h>
 struct SyncIOReadBuffer
 {
   typedef std::function<uint32_t(char*, const uint32_t)> DataSourcer;
@@ -300,7 +300,7 @@ struct SyncIOLazyWriteBuffer
 
 #include <optional>
 template <class ErrType>
-struct AsyncIOLazyWriteBuffer
+struct AsyncIOWriteBuffer
 {
   using ErrProcessor = std::function<void(const ErrType&)>;
   using WriteResutHandler = std::function<void(const uint32_t, const std::optional<ErrType>&)>;
@@ -313,7 +313,7 @@ struct AsyncIOLazyWriteBuffer
     NONE
   };
 
-  AsyncIOLazyWriteBuffer(const uint32_t size,
+  AsyncIOWriteBuffer(const uint32_t size,
                          const DataWriter& dataWriter,
                          const ErrProcessor& errProcessor) : 
     m_outBuff(reinterpret_cast<char*>(malloc(size))),
@@ -321,6 +321,7 @@ struct AsyncIOLazyWriteBuffer
     m_head(0),
     m_size(size),
     m_pendingWriteCompletions(0),
+    m_interfaceInvalidated(false);
     m_dataWriter(dataWriter),
     m_errProcessor(dataWriter),
     m_lastOperation(LastOperation::NONE)
@@ -332,7 +333,7 @@ struct AsyncIOLazyWriteBuffer
     if (m_pendingWriteCompletions)
     {
       uint32_t remainingLen = len;
-      while (freeBytes() < len)
+      while (freeBytes() < remainingLen)
       {
         uint32_t freeBytesBeforePut = freeBytes();
         put(out, freeBytes());
@@ -355,7 +356,7 @@ struct AsyncIOLazyWriteBuffer
     }
   }
 
-  ~AsyncIOLazyWriteBuffer()
+  ~AsyncIOWriteBuffer()
   {
     flush();
     free(m_outBuff);
@@ -363,18 +364,11 @@ struct AsyncIOLazyWriteBuffer
 
   private:
 
-  void onWriteComplete(const uint32_t len, const std::optional<ErrType>& err)
+  void onWriteComplete()
   {
-    if (err)
+    if (!(--m_pendingWriteCompletions))
     {
-      m_errProcessor(err.value());
-    }
-    else
-    {
-      if (!(--m_pendingWriteCompletions))
-      {
-        flush();
-      }
+      flush();
     }
   }
 
@@ -432,6 +426,23 @@ struct AsyncIOLazyWriteBuffer
     m_lastOperation = LastOperation::FLUSH;
   }
 
+  void writeToInterface(const char* out, const uint32_t len)
+  {
+    m_dataWriter(out,
+                 len,
+                 [this](const uint32_t len, const std::optional<ErrType>& err)
+                 {
+                   if (err)
+                   {
+                     onWriteComplete();
+                   }
+                   else
+                   {
+                     m_errProcessor(err.value());
+                   }
+                 });
+  }
+
   uint32_t occupiedBytes()
   {
     if (m_tail == m_head)
@@ -461,4 +472,5 @@ struct AsyncIOLazyWriteBuffer
   const uint32_t m_size;
   char* m_outBuff;
   uint32_t m_pendingWriteCompletions;
+  bool m_interfaceInvalidated;
 };
