@@ -21,6 +21,8 @@ add_executable(DefaultFileReader DefaultFileReader.cpp)
 project(SmartFileReader)
 add_executable(SmartFileReader SmartFileReader.cpp)
 
+project(WC)
+add_executable(WC WC.cpp)
 
 add_subdirectory("UnitTests")
 
