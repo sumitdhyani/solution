@@ -13,7 +13,6 @@ struct SyncIOReadBuffer
   SyncIOReadBuffer(const uint32_t size) : 
     m_tail(0),
     m_head(0),
-    m_end(size - 1),
     m_size(size),
     m_lastOperation(LastOperation::NONE)
   {
@@ -104,14 +103,14 @@ struct SyncIOReadBuffer
     }
 
     if (m_tail < m_head || 
-        len <= (m_end - m_tail + 1))
+        len <= (m_size - m_tail))
     {
       memcpy(out, m_ptr + m_tail, len);
       m_tail = (m_tail + len) % m_size;
     }
     else
     {
-      const uint32_t l1 = m_end - m_tail + 1;
+      const uint32_t l1 = m_size - m_tail;
       const uint32_t l2 = len - l1;
       memcpy(out, m_ptr + m_tail, l1);
       memcpy(out + l1, m_ptr, l2);
@@ -135,7 +134,7 @@ struct SyncIOReadBuffer
     }
     else
     {
-      uint32_t lengthTillEnd = m_end - m_head + 1;
+      uint32_t lengthTillEnd = m_size - m_head;
       bytesReadFromSourcer = dataSourcer(m_ptr + m_head, lengthTillEnd);
       m_head += bytesReadFromSourcer;
       if (bytesReadFromSourcer == lengthTillEnd)
@@ -178,7 +177,6 @@ struct SyncIOReadBuffer
   LastOperation m_lastOperation;
   uint32_t m_tail;
   uint32_t m_head;
-  const uint32_t m_end;
   const uint32_t m_size;
   char* m_ptr;
 };
