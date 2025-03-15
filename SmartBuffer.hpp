@@ -350,10 +350,9 @@ struct AsyncIOWriteBuffer
     if (m_pendingWriteCompletions)
     {
       uint32_t remainingLen = len;
-      while (freeBytes() < remainingLen)
+      while (auto freeBytesBeforePut = freeBytes() < remainingLen)
       {
-        uint32_t freeBytesBeforePut = freeBytes();
-        put(out, freeBytes());
+        put(out, freeBytesBeforePut);
         remainingLen -= freeBytesBeforePut;
         out += freeBytesBeforePut;
         flush();
