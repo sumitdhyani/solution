@@ -2,7 +2,7 @@
 #include <string.h>
 struct SyncIOReadBuffer
 {
-  typedef std::function<uint32_t(char*, const uint32_t)> DataSourcer;
+  typedef std::function<uint32_t(char*, const uint32_t&)> DataSourcer;
   enum class LastOperation
   {
     COPY,
@@ -10,17 +10,17 @@ struct SyncIOReadBuffer
     NONE
   };
 
-  SyncIOReadBuffer(const uint32_t size) : 
+  SyncIOReadBuffer(const uint32_t& size) : 
+    m_readBuff(reinterpret_cast<char*>(malloc(size))),
     m_tail(0),
     m_head(0),
     m_size(size),
     m_lastOperation(LastOperation::NONE)
   {
-    m_ptr = reinterpret_cast<char*>(malloc(size));
   }
 
-  uint32_t read(char* out, 
-                const uint32_t len,
+  uint32_t read(char* const& out, 
+                const uint32_t& len,
                 const DataSourcer& dataSourcer)
   {
     uint32_t ret = 0;
@@ -39,9 +39,9 @@ struct SyncIOReadBuffer
     return ret;
   }
 
-  uint32_t readUntil(char* out,
+  uint32_t readUntil(char* const& out,
                      const DataSourcer& dataSourcer,
-                     const char ender)
+                     const char& ender)
   {
     uint32_t ret = 0;
     uint32_t offset = 0;
@@ -54,11 +54,11 @@ struct SyncIOReadBuffer
     if (occBytes)
     {
       for (;
-          offset < occBytes && m_ptr[(m_tail + offset) % m_size] != ender;
+          offset < occBytes && m_readBuff[(m_tail + offset) % m_size] != ender;
           ++offset);
       
       // Found ender
-      if (ender == m_ptr[(m_tail + offset) % m_size])
+      if (ender == m_readBuff[(m_tail + offset) % m_size])
       {
         copy(out, offset+1);
         ret = offset+1;
@@ -85,7 +85,7 @@ struct SyncIOReadBuffer
 
   ~SyncIOReadBuffer()
   {
-    free(m_ptr);
+    free(m_readBuff);
   }
 
   SyncIOReadBuffer(const SyncIOReadBuffer&) = delete;
@@ -95,7 +95,7 @@ struct SyncIOReadBuffer
 
   private:
 
-  void copy(char* out, const uint32_t len)
+  void copy(char* const& out, const uint32_t& len)
   {
     if (!len)
     {
@@ -105,15 +105,15 @@ struct SyncIOReadBuffer
     if (m_tail < m_head || 
         len <= (m_size - m_tail))
     {
-      memcpy(out, m_ptr + m_tail, len);
+      memcpy(out, m_readBuff + m_tail, len);
       m_tail = (m_tail + len) % m_size;
     }
     else
     {
       const uint32_t l1 = m_size - m_tail;
       const uint32_t l2 = len - l1;
-      memcpy(out, m_ptr + m_tail, l1);
-      memcpy(out + l1, m_ptr, l2);
+      memcpy(out, m_readBuff + m_tail, l1);
+      memcpy(out + l1, m_readBuff, l2);
       m_tail = l2;
     }
 
@@ -124,22 +124,22 @@ struct SyncIOReadBuffer
     }
   }
 
-  uint32_t paste(const std::function<uint32_t(char*, const uint32_t)>& dataSourcer)
+  uint32_t paste(const DataSourcer& dataSourcer)
   {
     uint32_t bytesReadFromSourcer = 0;
     if (m_head < m_tail)
     {
-      bytesReadFromSourcer = dataSourcer(m_ptr + m_head, m_tail - m_head);
+      bytesReadFromSourcer = dataSourcer(m_readBuff + m_head, m_tail - m_head);
       m_head += bytesReadFromSourcer;
     }
     else
     {
       uint32_t lengthTillEnd = m_size - m_head;
-      bytesReadFromSourcer = dataSourcer(m_ptr + m_head, lengthTillEnd);
+      bytesReadFromSourcer = dataSourcer(m_readBuff + m_head, lengthTillEnd);
       m_head += bytesReadFromSourcer;
       if (bytesReadFromSourcer == lengthTillEnd)
       {
-        uint32_t temp = dataSourcer(m_ptr, freeBytes());
+        uint32_t temp = dataSourcer(m_readBuff, freeBytes());
         bytesReadFromSourcer += temp;
         m_head = temp;
       }
@@ -178,12 +178,12 @@ struct SyncIOReadBuffer
   uint32_t m_tail;
   uint32_t m_head;
   const uint32_t m_size;
-  char* m_ptr;
+  char* const m_readBuff;
 };
 
 struct SyncIOLazyWriteBuffer
 {
-  typedef std::function<void(char*, const uint32_t)> DataWriter;
+  typedef std::function<void(char*, const uint32_t&)> DataWriter;
   enum class LastOperation
   {
     FLUSH,
@@ -191,17 +191,17 @@ struct SyncIOLazyWriteBuffer
     NONE
   };
 
-  SyncIOLazyWriteBuffer(const uint32_t size, const DataWriter& dataWriter) : 
+  SyncIOLazyWriteBuffer(const uint32_t& size, const DataWriter& dataWriter) : 
     m_outBuff(reinterpret_cast<char*>(malloc(size))),
     m_tail(0),
     m_head(0),
     m_size(size),
-    m_dataWRiter(dataWriter),
+    m_dataWriter(dataWriter),
     m_lastOperation(LastOperation::NONE)
   {
   }
 
-  void write(const char* out, const uint32_t len)
+  void write(const char* out, const uint32_t& len)
   {
     uint32_t remainingLen = len;
     while (freeBytes() < remainingLen)
@@ -230,7 +230,7 @@ struct SyncIOLazyWriteBuffer
   private:
 
   // Call this only when freeBytes() <= len
-  void put(const char* outData, const uint32_t len)
+  void put(const char* outData, const uint32_t& len)
   {
     if (!len)
     {
@@ -264,12 +264,12 @@ struct SyncIOLazyWriteBuffer
 
     if (m_tail < m_head)
     {
-      m_dataWRiter(m_outBuff + m_tail, occupiedBytes());
+      m_dataWriter(m_outBuff + m_tail, occupiedBytes());
     }
     else
     {
-      m_dataWRiter(m_outBuff + m_tail, m_size - m_tail);
-      m_dataWRiter(m_outBuff, m_head);
+      m_dataWriter(m_outBuff + m_tail, m_size - m_tail);
+      m_dataWriter(m_outBuff, m_head);
     }
 
     m_tail = m_head = 0;
@@ -298,11 +298,11 @@ struct SyncIOLazyWriteBuffer
   }
 
   LastOperation m_lastOperation;
-  DataWriter m_dataWRiter;
+  const DataWriter m_dataWriter;
   uint32_t m_tail;
   uint32_t m_head;
   const uint32_t m_size;
-  char* m_outBuff;
+  char* const m_outBuff;
 };
 
 
@@ -310,10 +310,10 @@ struct SyncIOLazyWriteBuffer
 template <class ErrType>
 struct AsyncIOWriteBuffer
 {
-  using WriteCallback = std::function<void(const uint32_t)>;
+  using WriteCallback = std::function<void(const uint32_t&)>;
   using ErrProcessor = std::function<void(const ErrType&)>;
-  using WriteResutHandler = std::function<void(const uint32_t, const std::optional<ErrType>&)>;
-  using DataWriter = std::function<void(const char*, const uint32_t, const WriteResutHandler&)>;
+  using WriteResutHandler = std::function<void(const uint32_t&, const std::optional<ErrType>&)>;
+  using DataWriter = std::function<void(const char*, const uint32_t&, const WriteResutHandler&)>;
   
   enum class LastOperation
   {
@@ -322,7 +322,7 @@ struct AsyncIOWriteBuffer
     NONE
   };
 
-  AsyncIOWriteBuffer(const uint32_t size,
+  AsyncIOWriteBuffer(const uint32_t& size,
                      const DataWriter& dataWriter,
                      const ErrProcessor& errProcessor,
                      const WriteCallback& writeCallback
@@ -340,7 +340,7 @@ struct AsyncIOWriteBuffer
   {
   }
 
-  void write(const char* out, const uint32_t len)
+  void write(const char* out, const uint32_t& len)
   {
     if(m_interfaceInvalidated)
     {
@@ -387,7 +387,7 @@ struct AsyncIOWriteBuffer
   }
 
   // Call this only when freeBytes() >= len
-  void put(const char* outData, const uint32_t len)
+  void put(const char* outData, const uint32_t& len)
   {
     if (!len)
     {
@@ -433,12 +433,12 @@ struct AsyncIOWriteBuffer
     m_lastOperation = LastOperation::FLUSH;
   }
 
-  void writeToInterface(const char* out, const uint32_t len)
+  void writeToInterface(const char* out, const uint32_t& len)
   {
     ++m_pendingWriteCompletions;
     m_dataWriter(out,
                  len,
-                 [this](const uint32_t len, const std::optional<ErrType>& err)
+                 [this](const uint32_t& len, const std::optional<ErrType>& err)
                  {
                    if (err)
                    {
@@ -479,13 +479,13 @@ struct AsyncIOWriteBuffer
   }
 
   LastOperation m_lastOperation;
-  DataWriter m_dataWriter;
-  ErrProcessor m_errProcessor;
-  WriteCallback m_writeCallback;
+  const DataWriter m_dataWriter;
+  const ErrProcessor m_errProcessor;
+  const WriteCallback m_writeCallback;
   uint32_t m_tail;
   uint32_t m_head;
   const uint32_t m_size;
-  char* m_outBuff;
+  char* const m_outBuff;
   uint32_t m_pendingWriteCompletions;
   bool m_interfaceInvalidated;
 };
