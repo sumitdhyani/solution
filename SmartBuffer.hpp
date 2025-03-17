@@ -1,3 +1,4 @@
+#pragma once
 #include <functional>
 #include <string.h>
 struct SyncIOReadBuffer
@@ -305,8 +306,244 @@ struct SyncIOLazyWriteBuffer
   char* const m_outBuff;
 };
 
-
 #include <optional>
+
+template <class ErrType> 
+struct AsyncIOReadBuffer
+{
+  using std::optional<ErrType> MaybeErr;
+  using std::function<void(const uint32_t&, const MaybeErr&)> ReadHandler;
+  using std::function<void(char* const&, const uint32_t&, const ReadHandler&)> DataSourcer;
+
+  enum class LastOperation
+  {
+    COPY,
+    PASTE,
+    NONE
+  };
+
+  AsyncIOReadBuffer(const uint32_t& size) :
+  m_readBuff(reinterpret_cast<char*>(malloc(size))),
+  m_tail(0),
+  m_head(0),
+  m_size(size),
+  m_lastOperation(LastOperation::NONE)
+  {
+  }
+
+  ~AsyncIOReadBuffer()
+  {
+    free(m_readBuff);
+  }
+
+  void read(char* const& out,
+            const uint32_t& len,
+            const DataSourcer& dataSourcer,
+            const ReadHandler& readhandler)
+  {
+    uint32_t ret = 0;
+    if (occupiedBytes() >= len)
+    {
+      copy(out, len);
+      readhandler(len, std::nullopt);
+    }
+    else
+    {
+      paste(dataSourcer,
+            [readhandler](const uint32_t& len, const MaybeErr& err)
+            {
+              const uint32_t occBytes = occupiedBytes();
+              const uint32_t ret = occBytes >= len? len : occBytes;
+              copy(out, ret);
+              readhandler(ret, err);
+            }
+      );
+    }
+  }
+
+  uint32_t readUntil(char* const& out,
+                     const char& ender,
+                     const DataSourcer& dataSourcer,
+                     const ReadHandler& readhandler)
+  {
+    uint32_t ret = 0;
+    uint32_t offset = 0;
+    uint32_t occBytes = occupiedBytes();
+    if(!occBytes)
+    {
+      paste(dataSourcer, 
+            [out, ender, dataSourcer, readhandler](const uint32_t& len, const MaybeErr& err)
+            {
+              if(!err)
+              {
+                readUntil(out, ender, dataSourcer, readhandler);
+              }
+              else
+              {
+                const uint32_t occBytes = occupiedBytes();
+                const uint32_t ret = occBytes >= len? len : occBytes;
+                copy(out, ret);
+                readhandler(ret, err);
+              }
+            }
+      );
+    }
+    else
+    {
+      for (;
+          offset < occBytes && m_readBuff[(m_tail + offset) % m_size] != ender;
+          ++offset);
+
+      // Found ender
+      if (ender == m_readBuff[(m_tail + offset) % m_size])
+      {
+        copy(out, offset+1);
+        readhandler(offset+1, std::nullopt);
+      }
+      // Didn't find the ender
+      else
+      {
+        auto const callback =
+
+        paste(dataSourcer, 
+              [out, ender, dataSourcer, readhandler](const uint32_t& len, const MaybeErr& err)
+              {
+                if(!err)
+                {
+                  readUntil(out, ender, dataSourcer, readhandler);
+                }
+                else
+                {
+                  uint32_t occBytes = occupiedBytes();
+                  for (uint32_t offset = 0; offset < occBytes && m_readBuff[(m_tail + offset) % m_size] != ender, ++offset);
+                  copy(out, offset + 1);
+                  readhandler(offset + 1, err);
+                }
+              }
+        );
+      }
+    }
+  }
+
+
+  AsyncIOReadBuffer(const AsyncIOReadBuffer&) = delete;
+  AsyncIOReadBuffer& operator =(const AsyncIOReadBuffer&) = delete;
+  AsyncIOReadBuffer(AsyncIOReadBuffer&&) = delete;
+  AsyncIOReadBuffer& operator =(AsyncIOReadBuffer&&) = delete;
+
+  private:
+
+  uint32_t occupiedBytes()
+  {
+    if (m_tail == m_head)
+    {
+      return m_lastOperation == LastOperation::COPY || m_lastOperation == LastOperation::NONE ? 0 : m_size;
+    }
+    else if (m_tail < m_head)
+    {
+      return m_head - m_tail;
+    }
+    else
+    {
+      return m_size - (m_tail - m_head);
+    }
+  }
+
+  uint32_t freeBytes()
+  {
+    return m_size - occupiedBytes();
+  }
+
+  void copy(char* const& out, const uint32_t& len)
+  {
+    if (!len)
+    {
+        return;
+    }
+
+    if (m_tail < m_head || 
+        len <= (m_size - m_tail))
+    {
+      memcpy(out, m_readBuff + m_tail, len);
+      m_tail = (m_tail + len) % m_size;
+    }
+    else
+    {
+      const uint32_t l1 = m_size - m_tail;
+      const uint32_t l2 = len - l1;
+      memcpy(out, m_readBuff + m_tail, l1);
+      memcpy(out + l1, m_readBuff, l2);
+      m_tail = l2;
+    }
+
+    m_lastOperation = LastOperation::COPY;
+    if (m_head == m_tail)
+    {
+      m_head = m_tail = 0;
+    }
+  }
+
+  uint32_t paste(const DataSourcer& dataSourcer, const Readhandler& readHandler)
+  {
+    uint32_t bytesReadFromSourcer = 0;
+    if (m_head < m_tail)
+    {
+      readFromInterface(m_readBuff + m_head, m_tail - m_head, readHandler);
+    }
+    else
+    {
+      readFromInterface(m_readBuff + m_head,
+                        lengthTillEnd,
+                        [this, readHandler, lengthTillEnd, dataSourcer](const uint32_t& len, const MaybeErr& err)
+                        {
+                          if (len < lengthTillEnd)
+                          {
+                            readHandler(len, err);
+                          }
+                          else
+                          {
+                            readFromInterface(m_readBuff + m_head, freeBytes(), dataSourcer, readHandler);
+                          }
+                        }
+      );
+    }
+    
+    if (bytesReadFromSourcer)
+    {
+        m_lastOperation = LastOperation::PASTE;
+    }
+
+    return bytesReadFromSourcer;
+  }
+
+  void readFromInterface(char* const& out, const uint32_t& len, const DataSourcer& dataSourcer, const ReadHandler& readhandler)
+  {
+    dataSourcer(out,
+                len,
+                [this, readhandler](const uint32_t& len, const ReadHandler& readhandler) { onBytesReadFromInterface(len, err, readhandler); }
+    )
+  }
+
+  void onBytesReadFromInterface(const uint32_t& len, const MaybeErr& err, const Readhandler& readhandler)
+  {
+    m_head = (m_head + len) % m_size;
+
+    if (len)
+    {
+      m_lastOperation = LastOperation::PASTE;
+    }
+
+    readhandler(len, err);
+  }
+
+  char* const m_readBuff;
+  const uint32_t m_size;
+  uint32_t m_tail;
+  uint32_t m_head;
+  LastOperation m_lastOperation;
+
+};
+
 template <class ErrType>
 struct AsyncIOWriteBuffer
 {

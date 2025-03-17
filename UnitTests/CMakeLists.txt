@@ -1,4 +1,4 @@
-set (GTEST_ROOT "${CMAKE_SOURCE_DIR}/googletest") 
+set (GTEST_ROOT "${CMAKE_SOURCE_DIR}/googletest")
 set(GTEST_LIBS "gtest gtest_main pthread")
 
 set (INCLUDE_DIRS "${GTEST_ROOT}/googletest/include" "${CMAKE_SOURCE_DIR}" ..)
