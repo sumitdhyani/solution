@@ -26,7 +26,7 @@ namespace CommUtilities
       using ReadHandler = CommFunctions<CommErr>::ReadHandler;
       using WriteHandler = CommFunctions<CommErr>::WriteHandler;
       auto read =
-      [sock = sock](char* const& readBuff, const SizeType& len, const ReadHandler& readHandler)
+      [sock](char* const& readBuff, const SizeType& len, const ReadHandler& readHandler)
         {
             sock->async_read_some(boost::asio::buffer(readBuff, len), [readHandler](const CommErr& err, const size_t& len){
               std::optional<CommErr> error = err? std::optional<CommErr>(err) : std::nullopt;
@@ -35,7 +35,7 @@ namespace CommUtilities
         };
 
       auto write =
-      [sock = sock](const char* writeBuff, const SizeType& len, const WriteHandler& writeHandler)
+      [sock](const char* writeBuff, const SizeType& len, const WriteHandler& writeHandler)
       {
           sock->async_write_some(boost::asio::buffer(writeBuff, len), [writeHandler](const CommErr& err, const size_t& len){
             std::optional<CommErr> error = err? std::optional<CommErr>(err) : std::nullopt;
@@ -44,7 +44,7 @@ namespace CommUtilities
       };
 
       auto close =
-      [sock = sock](const CloseHandler& closehandler)
+      [sock](const CloseHandler& closehandler)
       {
         try
         {
