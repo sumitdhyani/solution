@@ -227,6 +227,8 @@ namespace CommUtilities
       connect(ioservice, ip, port, buffSize, connectHandler);
     };
 
+    commFunctionCallback({listenFunc, connectFunc});
+
     ioservice->run();
 
     if (numThreads > 1)
