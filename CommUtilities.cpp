@@ -153,9 +153,9 @@ namespace CommUtilities
                                    const uint16_t& port,
                                    const ConnCallback& connCallback)
     {
-      static auto resolver = std::make_shared<Resolver>(*ioService);
+      auto resolver = std::make_shared<Resolver>(*ioService);
       std::function<void(const CommErr&, const Resolver::results_type&)> addressResolutionCallback =
-      [ioService, ip, port, connCallback]
+      [resolver, ioService, ip, port, connCallback]
       (const CommErr& ec, const Resolver::results_type& results)
       {
         onResolve(ec, results, ioService, ip, port, connCallback);
