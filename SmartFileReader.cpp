@@ -38,8 +38,8 @@ int main(int argc, char** argv)
     std::cout.write(out, len);
   };
 
-  SyncIOReadBuffer smartReadBuffer(atol(argv[1]));
-  SyncIOLazyWriteBuffer smartWriteBuffer(atol(argv[1]), io_console_writer);
+  SyncIOReadBuffer<uint32_t> smartReadBuffer(atol(argv[1]));
+  SyncIOLazyWriteBuffer<uint32_t> smartWriteBuffer(atol(argv[1]), io_console_writer);
 
   // SyncIOStackReadBuffer<4096> smartReadBuffer;
   // SyncIOLazyStackWriteBuffer<4096> smartWriteBuffer(io_console_writer);
