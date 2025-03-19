@@ -71,32 +71,20 @@ namespace CommUtilities
                                    const ConnCallback& connCallback)
     {
 
-      std::function<void()> asycAcceptLoop =
-      [ioService,
-       acceptor = std::make_shared<Acceptor>(*ioService, Endpoint(boost::asio::ip::tcp::v4(), port)),
-       connCallback,
-       &asycAcceptLoop]
-      ()
+      auto acceptor = std::make_shared<Acceptor>(*ioService, Endpoint(boost::asio::ip::tcp::v4(), port));
+      auto sock = std::make_shared<VanillaSocket>(*ioService);
+      
+      std::function<void(const BoostCommError&)> onAcceptOrReject =
+      [ioService, port, sock, connCallback](const BoostCommError& err)
       {
-        auto sock = std::make_shared<VanillaSocket>(*ioService);
-        auto onAcceptOrReject =
-        [sock, asycAcceptLoop, acceptor, connCallback](const BoostCommError& err)
+        if (connCallback(sock, err) && !err)
         {
-          if (connCallback(sock, err) && !err)
-          {
-            asycAcceptLoop();
-          }
-        };
-
-        acceptor->async_accept(*sock, onAcceptOrReject);
+          startAcceptingConnections(ioService, port, connCallback);
+        }
       };
 
-      asycAcceptLoop();
+      acceptor->async_accept(*sock, onAcceptOrReject);
     }
-  
-  
-    
-  
 
     void listen(const std::shared_ptr<IOService>& ioService,
                 const uint16_t& port,
@@ -196,7 +184,7 @@ namespace CommUtilities
   void getIOFunctions(const uint16_t& numThreads, const IOFunctionsCallback<BoostCommError>& commFunctionCallback)
   {
     auto ioservice = std::make_shared<IOService>();
-    auto work = boost::asio::make_work_guard(ioservice);
+    auto work = boost::asio::make_work_guard(*ioservice);
 
     std::thread* threads = nullptr;
     if (numThreads > 1)
