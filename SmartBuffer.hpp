@@ -69,11 +69,12 @@ struct SyncIOReadBuffer
       // Didn't find the ender
       else
       {
-        // Source the data from IO Interface
+        copy(out, occBytes);
+          // Source the data from IO Interface
         if(SizeType bytesPasted = paste(dataSourcer);
           bytesPasted > 0)// Non-zero no. of bytes read
         {
-          ret = readUntil(out, dataSourcer, ender);
+          ret = readUntil(out + occBytes, dataSourcer, ender);
         }
         else// EOF reached, but there's still some data in the buffer
         {
@@ -133,24 +134,33 @@ struct SyncIOReadBuffer
     if (m_head < m_tail)
     {
       bytesReadFromSourcer = dataSourcer(m_readBuff + m_head, m_tail - m_head);
+      if (bytesReadFromSourcer)
+      {
+        m_lastOperation = LastOperation::PASTE;
+      }
       m_head += bytesReadFromSourcer;
     }
     else
     {
       SizeType lengthTillEnd = m_size - m_head;
       bytesReadFromSourcer = dataSourcer(m_readBuff + m_head, lengthTillEnd);
-      m_head += bytesReadFromSourcer;
-      if (bytesReadFromSourcer == lengthTillEnd)
+      if (bytesReadFromSourcer)
       {
-        SizeType temp = dataSourcer(m_readBuff, freeBytes());
+        m_lastOperation = LastOperation::PASTE;
+      }
+
+      m_head = (m_head + bytesReadFromSourcer) % m_size;
+      if (auto free = freeBytes(); free && bytesReadFromSourcer == lengthTillEnd)
+      {
+        SizeType temp = dataSourcer(m_readBuff, free);
+        if (temp)
+        {
+          m_lastOperation = LastOperation::PASTE;
+        }
+        
         bytesReadFromSourcer += temp;
         m_head = temp;
       }
-    }
-    
-    if (bytesReadFromSourcer)
-    {
-        m_lastOperation = LastOperation::PASTE;
     }
 
     return bytesReadFromSourcer;
