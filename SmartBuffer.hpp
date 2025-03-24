@@ -99,6 +99,8 @@ struct SyncIOReadBuffer
 
   private:
 
+  // Assumes that len <= occupiedBytes, so the caller of this function has to
+  // take care of that
   void copy(char* const& out, const SizeType& len)
   {
     if (!len)
@@ -122,49 +124,55 @@ struct SyncIOReadBuffer
     }
 
     m_lastOperation = LastOperation::COPY;
-    if (0 == occupiedBytes())
+    if (!occupiedBytes())
     {
       m_head = m_tail = 0;
     }
   }
 
+  // Read from IOInterface, takes into account fragmentation in free memory
   SizeType paste(const DataSourcer& dataSourcer)
   {
     SizeType bytesReadFromSourcer = 0;
-    if (m_head < m_tail)
-    {
-      bytesReadFromSourcer = dataSourcer(m_readBuff + m_head, m_tail - m_head);
-      if (bytesReadFromSourcer)
-      {
-        m_lastOperation = LastOperation::PASTE;
-      }
-      m_head += bytesReadFromSourcer;
-    }
-    else
+    if (auto free = freeBytes(); free)
     {
       SizeType lengthTillEnd = m_size - m_head;
-      bytesReadFromSourcer = dataSourcer(m_readBuff + m_head, lengthTillEnd);
-      if (bytesReadFromSourcer)
+      SizeType toRead = std::min(lengthTillEnd, free);
+      
+      bytesReadFromSourcer = pasteFromInterface(dataSourcer, toRead);
+      free -= bytesReadFromSourcer;
+      if (bytesReadFromSourcer == toRead && free)
       {
-        m_lastOperation = LastOperation::PASTE;
-      }
-
-      m_head = (m_head + bytesReadFromSourcer) % m_size;
-      if (auto free = freeBytes(); free && bytesReadFromSourcer == lengthTillEnd)
-      {
-        SizeType temp = dataSourcer(m_readBuff, free);
-        if (temp)
-        {
-          m_lastOperation = LastOperation::PASTE;
-        }
-        
-        bytesReadFromSourcer += temp;
-        m_head = temp;
+        bytesReadFromSourcer += pasteFromInterface(dataSourcer, free);
       }
     }
 
     return bytesReadFromSourcer;
   }
+
+  // Read from IOInterface, assumes that the provided memory is
+  // contiguous
+  SizeType pasteFromInterface(const DataSourcer& dataSourcer, const SizeType& len)
+  {
+    SizeType ret = 0;
+    if(len)
+    {
+      ret = dataSourcer(m_readBuff + m_head, len);
+      if (ret)
+      {
+        m_head += ret;
+        if(m_size == m_head)
+        {
+          m_head = 0;
+        }
+
+        m_lastOperation = LastOperation::PASTE;
+      }
+    }
+
+    return ret;
+  }
+
 
   SizeType occupiedBytes()
   {

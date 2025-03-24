@@ -3,7 +3,7 @@
 #include <chrono>
 #include "SmartBuffer.hpp"
 
-int main()
+int main(int argc, char** argv)
 {
     auto start = std::chrono::high_resolution_clock().now();
     {
@@ -20,8 +20,9 @@ int main()
           std::cout.write(out, len);
       };    
       
-      SyncIOReadBuffer smartReadBuffer(4096);
-      SyncIOLazyWriteBuffer smartWriteBuffer(4096, io_console_writer);
+      uint32_t buffSize = atol(argv[1]);
+      SyncIOReadBuffer<uint32_t> smartReadBuffer(buffSize);
+      SyncIOLazyWriteBuffer<uint32_t> smartWriteBuffer(buffSize, io_console_writer);
       
       char input[128];
       smartReadBuffer.readUntil(input, io_console_reader, '\n');
@@ -44,7 +45,7 @@ int main()
     char endingBuff[1024];
     char* currWriteHead = endingBuff;
     std::string durationStr = std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count()) + " ns"; 
-    currWriteHead += sprintf(currWriteHead, "Duration: %s\n", durationStr.c_str());
+    currWriteHead += sprintf(currWriteHead, "Duration: %s", durationStr.c_str());
     std::cout.write(endingBuff, currWriteHead - endingBuff + 1);
 
     return 0;

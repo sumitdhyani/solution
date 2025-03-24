@@ -181,7 +181,7 @@ namespace CommUtilities
     }
   }  
 
-  void getIOFunctions(const uint16_t& numThreads, const IOFunctionsCallback<BoostCommError>& commFunctionCallback)
+  void getIOFunctions(const uint16_t& numThreads, const CommFunctionsCallback<BoostCommError>& commFunctionCallback)
   {
     auto ioservice = std::make_shared<IOService>();
     auto work = boost::asio::make_work_guard(*ioservice);

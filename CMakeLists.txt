@@ -17,6 +17,12 @@ add_executable(DefaultFileReader DefaultFileReader.cpp)
 project(SmartFileReader)
 add_executable(SmartFileReader SmartFileReader.cpp)
 
+project(SmartTest)
+add_executable(SmartTest SmartTest.cpp)
+
+project(DefaultTest)
+add_executable(DefaultTest DefaultTest.cpp)
+
 project(WC)
 add_executable(WC WC.cpp)
 
@@ -26,6 +32,7 @@ set (IO_UTILS_LIB_DIRS "${BOOST_ROOT}/stage/lib")
 
 project(IO_UTILS)
 add_executable(IO_UTILS CommUtilities.cpp)
+add_library(IO_UTILS_LIB CommUtilities.cpp)
 target_include_directories(IO_UTILS PUBLIC ${IO_UTILS_INCLUDE_DIRS})
 target_link_directories(IO_UTILS PUBLIC ${IO_UTILS_LIB_DIRS})
 

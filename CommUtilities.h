@@ -40,8 +40,8 @@ namespace CommUtilities
   using IOFunctions = std::tuple<ListenFunc<CommError>, ConnectFunc<CommError>>;
 
   template <class CommError>
-  using IOFunctionsCallback = std::function<void(const IOFunctions<CommError>&)>;
+  using CommFunctionsCallback = std::function<void(const IOFunctions<CommError>&)>;
 
   template <class CommError>
-  void getIOFunctions(const uint16_t& numThreads, const IOFunctionsCallback<CommError>&);
+  void getIOFunctions(const uint16_t& numThreads, const CommFunctionsCallback<CommError>&);
 }

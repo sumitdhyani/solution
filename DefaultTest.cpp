@@ -13,7 +13,7 @@ int main()
       {
         uint32_t n1, n2;
         std::cin >> n1 >> n2;
-        std::cout << ((n1 > n2)? n1 : n2) << std::endl;
+        std::cout << ((n1 > n2)? n1 : n2) << '\n';
       }
     }
     auto duration = std::chrono::high_resolution_clock().now() - start;
@@ -21,7 +21,7 @@ int main()
     char endingBuff[1024];
     char* currWriteHead = endingBuff;
     std::string durationStr = std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count()) + " ns"; 
-    currWriteHead += sprintf(currWriteHead, "Duration: %s\n", durationStr.c_str());
+    currWriteHead += sprintf(currWriteHead, "Duration: %s", durationStr.c_str());
     std::cout.write(endingBuff, currWriteHead - endingBuff + 1);
 
     return 0;
