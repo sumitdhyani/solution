@@ -47,7 +47,7 @@ int main(int argc, char** argv)
   uint32_t numLines = 0;
   uint32_t lineLen = 0;
   auto start = std::chrono::high_resolution_clock().now();
-  while(lineLen = smartReadBuffer.readUntil(line, io_console_reader, '\n'))
+  while(lineLen = smartReadBuffer.readUntil(line, io_console_reader, [](const char& ch) { return ch == '\n'; }))
   {
     smartWriteBuffer.write((char*)line, lineLen);
     ++numLines;

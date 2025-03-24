@@ -87,6 +87,51 @@ struct SyncIOReadBuffer
     return ret;
   }
 
+  SizeType readUntil(char* const& out,
+                     const DataSourcer& dataSourcer,
+                     const std::function<bool(const char&)>& ender)
+  {
+    SizeType ret = 0;
+    SizeType offset = 0;
+    SizeType occBytes = occupiedBytes();
+    if(!occBytes)
+    {
+      occBytes = paste(dataSourcer);
+    }
+
+    if (occBytes)
+    {
+      for (;
+           offset < occBytes && !ender(m_readBuff[(m_tail + offset) % m_size]);
+           ++offset);
+
+      // Found ender
+      if (ender == m_readBuff[(m_tail + offset) % m_size])
+      {
+        copy(out, offset+1);
+        ret = offset+1;
+      }
+      // Didn't find the ender
+      else
+      {
+        copy(out, occBytes);
+        // Source the data from IO Interface
+        if(SizeType bytesPasted = paste(dataSourcer);
+           bytesPasted > 0)// Non-zero no. of bytes read
+        {
+          ret = readUntil(out + occBytes, dataSourcer, ender);
+        }
+        else// EOF reached, but there's still some data in the buffer
+        {
+          ret = occupiedBytes();
+          copy(out, ret);
+        }
+      }
+  }
+
+  return ret;
+}
+
   ~SyncIOReadBuffer()
   {
     free(m_readBuff);
@@ -98,7 +143,6 @@ struct SyncIOReadBuffer
   SyncIOReadBuffer& operator =(SyncIOReadBuffer&&) = delete;
 
   private:
-
   // Assumes that len <= occupiedBytes, so the caller of this function has to
   // take care of that
   void copy(char* const& out, const SizeType& len)
