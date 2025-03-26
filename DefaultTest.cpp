@@ -20,7 +20,7 @@ int main()
 
     char endingBuff[1024];
     char* currWriteHead = endingBuff;
-    std::string durationStr = std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count()) + " ns"; 
+    std::string durationStr = std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() / (double)1000000000) + " s";
     currWriteHead += sprintf(currWriteHead, "Duration: %s", durationStr.c_str());
     std::cout.write(endingBuff, currWriteHead - endingBuff + 1);
 

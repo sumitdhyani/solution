@@ -35,8 +35,17 @@ struct SyncIOReadBuffer
     else
     {
       paste(dataSourcer);
-      ret = occupiedBytes() >= len? len : occupiedBytes();
-      copy(out, ret);
+      SizeType occBytes = occupiedBytes();
+      if (occBytes >= len)
+      {
+        copy(out, len);
+        ret = len;
+      }
+      else
+      {
+        copy(out, occBytes);
+        ret = occBytes + read(out + occBytes, len - occBytes, dataSourcer);
+      }
     }
 
     return ret;
@@ -117,7 +126,7 @@ struct SyncIOReadBuffer
         copy(out, occBytes);
         // Source the data from IO Interface
         if(SizeType bytesPasted = paste(dataSourcer);
-           bytesPasted > 0)// Non-zero no. of bytes read
+           bytesPasted)// Non-zero no. of bytes read
         {
           ret = readUntil(out + occBytes, dataSourcer, ender);
         }
