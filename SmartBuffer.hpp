@@ -32,9 +32,8 @@ struct SyncIOReadBuffer
       copy(out, len);
       ret = len;
     }
-    else
+    else if (paste(dataSourcer))
     {
-      paste(dataSourcer);
       SizeType occBytes = occupiedBytes();
       if (occBytes >= len)
       {
